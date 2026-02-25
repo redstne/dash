@@ -1,0 +1,29 @@
+{
+  "name": "@redstnkit/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "module": "src/index.ts",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun run src/db/migrate.ts",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.2.0",
+    "@elysiajs/static": "^1.1.1",
+    "@elysiajs/swagger": "^1.2.0",
+    "better-auth": "^1.2.7",
+    "drizzle-orm": "^0.38.0",
+    "elysia": "^1.2.0",
+    "elysia-rate-limit": "^4.2.1",
+    "nanoid": "^5.0.0",
+    "rcon-client": "^4.2.4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "drizzle-kit": "^0.30.0"
+  }
+}

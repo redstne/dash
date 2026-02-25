@@ -1,0 +1,15 @@
+{
+  "name": "redstnkit-dash",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/api", "packages/web"],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter 'web' build && bun run --filter 'api' build",
+    "lint": "bun run --filter '*' lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

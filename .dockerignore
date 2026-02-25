@@ -1,0 +1,12 @@
+node_modules
+packages/*/node_modules
+packages/api/public
+packages/web/dist
+data
+.env
+.env.*
+.git
+.gitignore
+*.md
+docker-compose*.yml
+.github
