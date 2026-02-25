@@ -42,7 +42,7 @@ services:
     image: itzg/minecraft-server:latest
     environment:
       EULA: "TRUE"
-      MEMORY: 2G
+      MEMORY: 4G
       ENABLE_RCON: "true"
       RCON_PASSWORD: ${MC_RCON_PASSWORD:?MC_RCON_PASSWORD is required}
       RCON_PORT: 25575

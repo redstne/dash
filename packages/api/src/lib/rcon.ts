@@ -118,7 +118,10 @@ export async function getServerStatus(serverId: string): Promise<ServerStatus> {
     let tps: number | null = null;
     try {
       const tpsResponse = await sendCommand(serverId, "tps");
-      const tpsMatch = tpsResponse.match(/(\d+\.?\d*)/);
+      // Strip §x Minecraft color codes before parsing (e.g. §6TPS ... §a19.97)
+      const cleaned = tpsResponse.replace(/§./g, "");
+      // Match first TPS value after the colon: "TPS from last 1m, 5m, 15m: 19.97, ..."
+      const tpsMatch = cleaned.match(/:\s*(\d+\.?\d*)/);
       if (tpsMatch) tps = Math.min(20, parseFloat(tpsMatch[1]!));
     } catch { /* vanilla — ignore */ }
 

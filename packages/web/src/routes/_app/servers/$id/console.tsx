@@ -30,13 +30,21 @@ function ConsolePage() {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      setConnected(true);
-      term.writeln("\r\n\x1b[32m✓ Connected to server console\x1b[0m\r\n");
+      // Don't mark as connected yet — wait for the "connected" message which
+      // includes whether the Minecraft server is actually reachable via RCON.
+      term.writeln("\r\n\x1b[90mEstablishing console session…\x1b[0m");
     };
     ws.onmessage = (e) => {
       try {
-        const msg = JSON.parse(e.data as string) as { type: string; data?: string };
-        if (msg.type === "output" && msg.data) {
+        const msg = JSON.parse(e.data as string) as { type: string; data?: string; online?: boolean };
+        if (msg.type === "connected") {
+          setConnected(true);
+          if (msg.online) {
+            term.writeln("\x1b[32m✓ Connected to server console\x1b[0m\r\n");
+          } else {
+            term.writeln("\x1b[33m⚠ Dashboard connected — Minecraft server is offline (RCON unreachable)\x1b[0m\r\n");
+          }
+        } else if (msg.type === "output" && msg.data) {
           term.writeln(msg.data.replace(/\r?\n/g, "\r\n"));
         } else if (msg.type === "error") {
           term.writeln(`\x1b[31m[error] ${msg.data ?? ""}\x1b[0m`);

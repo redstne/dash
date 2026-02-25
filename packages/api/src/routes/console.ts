@@ -1,6 +1,6 @@
 import Elysia from "elysia";
 import { authPlugin, requireRole } from "../plugins/rbac.ts";
-import { sendCommand, getOnlinePlayers } from "../lib/rcon.ts";
+import { sendCommand, getOnlinePlayers, getServerStatus } from "../lib/rcon.ts";
 import { audit } from "../lib/audit.ts";
 import { db, schema } from "../db/index.ts";
 import { eq } from "drizzle-orm";
@@ -132,7 +132,7 @@ export const consoleRoute = new Elysia({ prefix: "/api/servers" })
    * WebSocket: live console relay (operator+)
    */
   .ws("/:id/console", {
-    open(ws) {
+    async open(ws) {
       // Re-verify session on open (requireRole runs on the HTTP upgrade request,
       // but we guard here too in case the plugin resolution differs)
       if (!ws.data.session?.user) {
@@ -146,7 +146,9 @@ export const consoleRoute = new Elysia({ prefix: "/api/servers" })
       (ws as unknown as { _consoleSend: typeof send; _wsId: string })._consoleSend = send;
       (ws as unknown as { _consoleSend: typeof send; _wsId: string })._wsId =
         `${ws.data.session.user.id}:${serverId}:${Date.now()}`;
-      ws.send(JSON.stringify({ type: "connected", serverId }));
+      // Check if the Minecraft server is actually reachable via RCON
+      const status = await getServerStatus(serverId).catch(() => null);
+      ws.send(JSON.stringify({ type: "connected", serverId, online: status?.online ?? false }));
       // Start tailing log file if configured
       void ensureLogTailer(serverId);
     },
