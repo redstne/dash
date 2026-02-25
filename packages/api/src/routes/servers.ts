@@ -198,6 +198,7 @@ export const serversRoute = new Elysia({ prefix: "/api/servers" })
   // Discover Minecraft servers on local network subnets (admin only)
   .get("/discover", async ({ session, status, query }) => {
     if (!session?.user) return status(401, "Unauthorized");
+    if (session.user.role !== "admin") return status(403, "Forbidden");
     const rconPort = Number(query.rconPort ?? 25575);
     const mcPort   = Number(query.mcPort   ?? 25565);
 
@@ -264,7 +265,11 @@ export const serversRoute = new Elysia({ prefix: "/api/servers" })
   // Kick a player (operator+)
   .post("/:id/players/:name/kick", async ({ params, body, session, status, request }) => {
     if (!session?.user) return status(401, "Unauthorized");
-    const reason = (body as { reason?: string }).reason ?? "Kicked by an admin";
+    if (session.user.role !== "admin" && session.user.role !== "operator") return status(403, "Forbidden");
+    // Validate player name to prevent RCON command injection
+    if (!/^[a-zA-Z0-9_]{1,16}$/.test(params.name)) return status(400, "Invalid player name");
+    const reason = ((body as { reason?: string }).reason ?? "Kicked by an admin")
+      .replace(/[\r\n]/g, " ").slice(0, 200);
     const response = await sendCommand(params.id, `kick ${params.name} ${reason}`);
     invalidateStatus(params.id);
     await audit({
@@ -280,8 +285,11 @@ export const serversRoute = new Elysia({ prefix: "/api/servers" })
   // Ban a player (admin only)
   .post("/:id/players/:name/ban", async ({ params, body, session, status, request }) => {
     if (!session?.user) return status(401, "Unauthorized");
-    if (session.user.role !== "admin" && session.user.role !== "operator") return status(403, "Forbidden");
-    const reason = (body as { reason?: string }).reason ?? "Banned by an admin";
+    if (session.user.role !== "admin") return status(403, "Forbidden");
+    // Validate player name to prevent RCON command injection
+    if (!/^[a-zA-Z0-9_]{1,16}$/.test(params.name)) return status(400, "Invalid player name");
+    const reason = ((body as { reason?: string }).reason ?? "Banned by an admin")
+      .replace(/[\r\n]/g, " ").slice(0, 200);
     const response = await sendCommand(params.id, `ban ${params.name} ${reason}`);
     invalidateStatus(params.id);
     await audit({

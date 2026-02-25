@@ -55,7 +55,7 @@ export const backupsRoute = new Elysia({ prefix: "/api/servers" })
         enabled: true,
       });
 
-      await audit(session.user.id, "backup_config.create", "backup_config", id, body.name);
+      await audit({ userId: session.user.id, action: "backup_config.create", resource: "backup_config", resourceId: id });
       return { id };
     },
     {
@@ -140,7 +140,7 @@ export const backupsRoute = new Elysia({ prefix: "/api/servers" })
       if (!session?.user) return set.status = 401;
 
       const runId = await runBackup(params.id, body.configId);
-      await audit(session.user.id, "backup.trigger", "server", params.id, body.configId);
+      await audit({ userId: session.user.id, action: "backup.trigger", resource: "server", resourceId: params.id });
       return { runId };
     },
     {

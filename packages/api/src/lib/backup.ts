@@ -4,7 +4,7 @@
  */
 
 import { db, schema } from "../db/index.ts";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, asc } from "drizzle-orm";
 import { encrypt, decrypt } from "./crypto.ts";
 import { existsSync, mkdirSync } from "node:fs";
 import { stat, unlink, readdir } from "node:fs/promises";
@@ -263,7 +263,7 @@ async function applyRetention(serverId: string, configId: string, keep: number) 
         eq(schema.backupRuns.status, "success")
       )
     )
-    .orderBy(schema.backupRuns.startedAt);
+    .orderBy(asc(schema.backupRuns.startedAt));
 
   if (runs.length <= keep) return;
 
