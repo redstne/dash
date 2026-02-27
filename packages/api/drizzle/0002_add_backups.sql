@@ -1,4 +1,4 @@
-CREATE TABLE `backup_configs` (
+CREATE TABLE IF NOT EXISTS `backup_configs` (
 	`id` text PRIMARY KEY NOT NULL,
 	`server_id` text NOT NULL,
 	`name` text NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE `backup_configs` (
 	FOREIGN KEY (`server_id`) REFERENCES `servers`(`id`) ON DELETE CASCADE
 );
 --> statement-breakpoint
-CREATE TABLE `backup_runs` (
+CREATE TABLE IF NOT EXISTS `backup_runs` (
 	`id` text PRIMARY KEY NOT NULL,
 	`server_id` text NOT NULL,
 	`config_id` text,
