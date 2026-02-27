@@ -4,23 +4,24 @@ import { swagger } from "@elysiajs/swagger";
 import { rateLimit } from "elysia-rate-limit";
 import { auth } from "./auth/index.ts";
 import { securityHeaders } from "./plugins/security.ts";
-import { serversRoute } from "./routes/servers.ts";
-import { consoleRoute, playersRoute } from "./routes/console.ts";
-import { filesRoute } from "./routes/files.ts";
-import { membersRoute, auditRoute } from "./routes/members.ts";
-import { analyticsRoute } from "./routes/analytics.ts";
-import { backupsRoute } from "./routes/backups.ts";
-import { modsRoute } from "./routes/mods.ts";
-import { runtimeRoute } from "./routes/runtime.ts";
-import { scheduleRoute, startTaskScheduler } from "./routes/schedule.ts";
-import { webhooksRoute } from "./routes/webhooks.ts";
-import { whitelistRoute } from "./routes/whitelist.ts";
-import { resourcesRoute } from "./routes/resources.ts";
-import { logsRoute, logsTailRoute } from "./routes/logs.ts";
+import { serversRoute } from "./modules/servers/index.ts";
+import { consoleRoute, playersRoute } from "./modules/console/index.ts";
+import { filesRoute } from "./modules/files/index.ts";
+import { membersRoute, auditRoute } from "./modules/members/index.ts";
+import { analyticsRoute } from "./modules/analytics/index.ts";
+import { backupsRoute } from "./modules/backups/index.ts";
+import { modsRoute } from "./modules/mods/index.ts";
+import { runtimeRoute } from "./modules/runtime/index.ts";
+import { scheduleRoute, startTaskScheduler } from "./modules/schedule/index.ts";
+import { webhooksRoute } from "./modules/webhooks/index.ts";
+import { whitelistRoute } from "./modules/whitelist/index.ts";
+import { resourcesRoute } from "./modules/resources/index.ts";
+import { logsRoute, logsTailRoute } from "./modules/logs/index.ts";
+import { playersManagementRoute } from "./modules/players/index.ts";
 import { startBackupScheduler } from "./lib/backup.ts";
 import { existsSync, mkdirSync } from "node:fs";
 import { db, schema } from "./db/index.ts";
-import { lt, sql } from "drizzle-orm";
+import { lt } from "drizzle-orm";
 
 // Ensure data directory exists
 if (!existsSync("data")) mkdirSync("data", { recursive: true });
@@ -45,7 +46,7 @@ setInterval(() => pruneAuditLog().catch(() => {}), 24 * 60 * 60 * 1000);
 const PORT = Number(process.env["PORT"] ?? 3001);
 const ALLOWED_ORIGIN = process.env["CORS_ORIGIN"] ?? "http://localhost:3001";
 
-const app = new Elysia()
+export const app = new Elysia()
   // ── Security ────────────────────────────────────────────────────────────
   .use(securityHeaders)
   .use(
@@ -102,6 +103,7 @@ const app = new Elysia()
   .use(resourcesRoute)
   .use(logsRoute)
   .use(logsTailRoute)
+  .use(playersManagementRoute)
   // ── Health check ─────────────────────────────────────────────────────────
   .get("/api/health", () => ({ status: "ok", ts: Date.now() }))
   // ── Serve built React SPA (production) ───────────────────────────────────

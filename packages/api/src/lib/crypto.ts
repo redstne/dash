@@ -15,7 +15,6 @@ function getKey(): Uint8Array {
 }
 
 const IV_BYTES = 12;
-const TAG_BYTES = 16;
 
 async function importKey(raw: Uint8Array): Promise<CryptoKey> {
   // Ensure a fresh ArrayBuffer (byteOffset must be 0 for crypto.subtle)

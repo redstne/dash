@@ -1,8 +1,8 @@
 import Elysia from "elysia";
-import { authPlugin, requireRole } from "../plugins/rbac.ts";
-import { getHistory } from "../lib/analytics.ts";
-import { getServerStatus } from "../lib/rcon.ts";
-import { db, schema } from "../db/index.ts";
+import { authPlugin, requireRole } from "../../plugins/rbac.ts";
+import { getHistory } from "../../lib/analytics.ts";
+import { getServerStatus } from "../../lib/rcon.ts";
+import { db, schema } from "../../db/index.ts";
 import { eq } from "drizzle-orm";
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -118,6 +118,7 @@ function parseLogAlerts(logPath: string | null): Alert[] {
             id: `log-${idx}`,
             severity: def.severity,
             message: def.message,
+            // eslint-disable-next-line no-control-regex
             detail: line.replace(/\u001b\[[0-9;]*m/g, "").trim(),
             at: parseLogTime(line),
             source: "log",
@@ -136,7 +137,7 @@ export const analyticsRoute = new Elysia({ prefix: "/api/servers" })
   .use(authPlugin)
   .use(requireRole("viewer"))
 
-  .get("/:id/analytics", async ({ params, set }) => {
+  .get("/:id/analytics", async ({ params }) => {
     const logPath = await getServerLogPath(params.id);
     const history = getHistory(params.id);
     const logStats = parseLogStats(logPath);

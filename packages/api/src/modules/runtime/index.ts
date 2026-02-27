@@ -1,10 +1,10 @@
 import Elysia, { t } from "elysia";
-import { authPlugin, requireRole } from "../plugins/rbac.ts";
+import { authPlugin, requireRole } from "../../plugins/rbac.ts";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { db, schema } from "../db/index.ts";
+import { db, schema } from "../../db/index.ts";
 import { eq } from "drizzle-orm";
-import { audit } from "../lib/audit.ts";
+import { audit } from "../../lib/audit.ts";
 
 const SAFE_ID = /^[a-zA-Z0-9_-]+$/;
 
@@ -24,7 +24,7 @@ export type RuntimeType = "vanilla" | "paper" | "purpur" | "fabric" | "forge";
 const RUNTIME_PATTERNS: Array<{ runtime: RuntimeType; pattern: RegExp }> = [
   { runtime: "paper",   pattern: /^paper[-_].+\.jar$/i },
   { runtime: "purpur",  pattern: /^purpur[-_].+\.jar$/i },
-  { runtime: "fabric",  pattern: /^fabric[-_server].+\.jar$/i },
+  { runtime: "fabric",  pattern: /^fabric[-_serv].+\.jar$/i },
   { runtime: "forge",   pattern: /^forge[-_].+\.jar$/i },
   { runtime: "vanilla", pattern: /^minecraft_server\..+\.jar$/i },
 ];
@@ -174,7 +174,7 @@ export const runtimeRoute = new Elysia({ prefix: "/api/servers" })
   // ── List available versions from upstream ─────────────────────────────
   .get(
     "/:id/runtime/versions",
-    async ({ params, query, session, status }) => {
+    async ({ query, session, status }) => {
       if (!session?.user) return status(401, "Unauthorized");
       const { runtime, mcVersion } = query;
       try {

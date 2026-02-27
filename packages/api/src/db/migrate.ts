@@ -1,6 +1,5 @@
 import { db, schema } from "./index.ts";
 import { seed, seedServers } from "./seed.ts";
-import { isNull } from "drizzle-orm";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 

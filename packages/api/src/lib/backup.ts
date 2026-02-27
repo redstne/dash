@@ -7,7 +7,7 @@ import { db, schema } from "../db/index.ts";
 import { eq, and, ne, asc } from "drizzle-orm";
 import { encrypt, decrypt } from "./crypto.ts";
 import { existsSync, mkdirSync } from "node:fs";
-import { stat, unlink, readdir } from "node:fs/promises";
+import { stat, unlink } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 

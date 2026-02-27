@@ -1,10 +1,10 @@
 import Elysia, { t } from "elysia";
-import { authPlugin, requireRole } from "../plugins/rbac.ts";
-import { db, schema } from "../db/index.ts";
+import { authPlugin, requireRole } from "../../plugins/rbac.ts";
+import { db, schema } from "../../db/index.ts";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { audit } from "../lib/audit.ts";
-import { sendCommand } from "../lib/rcon.ts";
+import { audit } from "../../lib/audit.ts";
+import { sendCommand } from "../../lib/rcon.ts";
 
 const SCHEDULE_INTERVALS: Record<string, number> = {
   hourly: 60 * 60 * 1000,

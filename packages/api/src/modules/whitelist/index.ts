@@ -1,11 +1,11 @@
 import Elysia, { t } from "elysia";
-import { authPlugin, requireRole } from "../plugins/rbac.ts";
-import { db, schema } from "../db/index.ts";
+import { authPlugin, requireRole } from "../../plugins/rbac.ts";
+import { db, schema } from "../../db/index.ts";
 import { eq } from "drizzle-orm";
-import { audit } from "../lib/audit.ts";
-import { sendCommand } from "../lib/rcon.ts";
+import { audit } from "../../lib/audit.ts";
+import { sendCommand } from "../../lib/rcon.ts";
 
-const PLAYER_NAME_RE = /^[a-zA-Z0-9_]{1,16}$/;
+const PLAYER_NAME_RE = /^\w{1,16}$/;
 
 /** Parse `whitelist list` RCON output into a player name array. */
 function parseWhitelistOutput(output: string): string[] {

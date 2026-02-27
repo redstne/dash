@@ -1,16 +1,15 @@
 import Elysia, { t } from "elysia";
-import { authPlugin, requireRole } from "../plugins/rbac.ts";
-import { db, schema } from "../db/index.ts";
+import { authPlugin, requireRole } from "../../plugins/rbac.ts";
+import { db, schema } from "../../db/index.ts";
 import { eq, and, desc } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { createReadStream, existsSync } from "node:fs";
-import { audit } from "../lib/audit.ts";
+import { existsSync } from "node:fs";
+import { audit } from "../../lib/audit.ts";
 import {
   encryptConfig,
-  decryptConfig,
   runBackup,
   type BackupStorageConfig,
-} from "../lib/backup.ts";
+} from "../../lib/backup.ts";
 
 export const backupsRoute = new Elysia({ prefix: "/api/servers" })
   .use(authPlugin)

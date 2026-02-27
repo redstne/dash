@@ -207,13 +207,13 @@ function PlayerDetailPage() {
                 </div>
 
                 {/* Live section — updates every 3s */}
-                {isOnline && liveData && (
+                {isOnline && (
                   <Card className="border-green-600/20 bg-green-950/10">
                     <CardContent className="pt-3 pb-3 px-4 space-y-2">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-green-400 flex items-center gap-1.5 mb-3">
                         <Activity className="w-3 h-3 animate-pulse" /> Live
                       </p>
-                      {liveData.health !== null && (
+                      {liveData?.health !== null && liveData?.health !== undefined && (
                         <div className="space-y-1">
                           <div className="flex justify-between text-xs">
                             <span className="flex items-center gap-1 text-muted-foreground"><Heart className="w-3 h-3 text-red-400" /> Health</span>
@@ -222,7 +222,7 @@ function PlayerDetailPage() {
                           <Progress value={(liveData.health / liveData.maxHealth) * 100} className="h-1.5 [&>div]:bg-red-500" />
                         </div>
                       )}
-                      {liveData.food !== null && (
+                      {liveData?.food !== null && liveData?.food !== undefined && (
                         <div className="space-y-1">
                           <div className="flex justify-between text-xs">
                             <span className="flex items-center gap-1 text-muted-foreground"><Utensils className="w-3 h-3 text-orange-400" /> Food</span>
@@ -231,7 +231,7 @@ function PlayerDetailPage() {
                           <Progress value={(liveData.food / 20) * 100} className="h-1.5 [&>div]:bg-orange-500" />
                         </div>
                       )}
-                      {liveData.xpLevel !== null && (
+                      {liveData?.xpLevel !== null && liveData?.xpLevel !== undefined && (
                         <div className="space-y-1">
                           <div className="flex justify-between text-xs">
                             <span className="flex items-center gap-1 text-muted-foreground"><Star className="w-3 h-3 text-yellow-400" /> XP</span>
@@ -240,12 +240,15 @@ function PlayerDetailPage() {
                           <Progress value={(liveData.xpProgress ?? 0) * 100} className="h-1.5 [&>div]:bg-yellow-400" />
                         </div>
                       )}
-                      {liveData.pos && (
+                      {liveData?.pos && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
                           <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
                           {liveData.pos.map((v) => Math.floor(v)).join(", ")}
                           {liveData.dimension && <span className="text-blue-400/70">({dimLabel(liveData.dimension)})</span>}
                         </p>
+                      )}
+                      {!liveData || (liveData.health === null && liveData.food === null && liveData.xpLevel === null && !liveData.pos) && (
+                        <p className="text-xs text-muted-foreground">Live stats unavailable (requires <span className="font-mono">data get entity</span> RCON access)</p>
                       )}
                     </CardContent>
                   </Card>

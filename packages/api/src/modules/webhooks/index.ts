@@ -1,9 +1,9 @@
 import Elysia, { t } from "elysia";
-import { authPlugin, requireRole } from "../plugins/rbac.ts";
-import { db, schema } from "../db/index.ts";
+import { authPlugin, requireRole } from "../../plugins/rbac.ts";
+import { db, schema } from "../../db/index.ts";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { audit } from "../lib/audit.ts";
+import { audit } from "../../lib/audit.ts";
 
 export type WebhookEvent =
   | "alert.critical"
@@ -23,6 +23,13 @@ export const ALL_EVENTS: WebhookEvent[] = [
   "backup.failed", "backup.success",
 ];
 
+function getWebhookColor(event: WebhookEvent): number {
+  if (event.startsWith("alert.critical") || event === "server.offline" || event === "backup.failed") return 0xef4444;
+  if (event.startsWith("alert.warning")) return 0xf97316;
+  if (event === "player.ban" || event === "player.kick") return 0xeab308;
+  return 0x22c55e;
+}
+
 export async function fireWebhooks(serverId: string, event: WebhookEvent, payload: object): Promise<void> {
   const hooks = await db
     .select()
@@ -31,7 +38,7 @@ export async function fireWebhooks(serverId: string, event: WebhookEvent, payloa
 
   for (const hook of hooks) {
     if (!hook.enabled) continue;
-    let events: string[] = [];
+    let events: string[];
     try { events = JSON.parse(hook.events); } catch { continue; }
     if (!events.includes(event)) continue;
 
@@ -39,11 +46,7 @@ export async function fireWebhooks(serverId: string, event: WebhookEvent, payloa
       embeds: [{
         title: `[${event}] ${serverId}`,
         description: JSON.stringify(payload, null, 2).slice(0, 4000),
-        color: event.startsWith("alert.critical") || event === "server.offline" ? 0xef4444
-              : event.startsWith("alert.warning") ? 0xf97316
-              : event.startsWith("player.ban") || event.startsWith("player.kick") ? 0xeab308
-              : event.startsWith("backup.failed") ? 0xef4444
-              : 0x22c55e,
+        color: getWebhookColor(event),
         timestamp: new Date().toISOString(),
         footer: { text: "redstnkit/dash" },
       }],
@@ -110,7 +113,7 @@ export const webhooksRoute = new Elysia({ prefix: "/api/servers" })
   // ── Update webhook ─────────────────────────────────────────────────────
   .patch(
     "/:id/webhooks/:hookId",
-    async ({ params, body, session, request, status }) => {
+    async ({ params, body, session, status }) => {
       if (!session?.user) return status(401, "Unauthorized");
       const [existing] = await db
         .select({ id: schema.webhooks.id })

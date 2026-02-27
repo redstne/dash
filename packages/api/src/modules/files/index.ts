@@ -1,10 +1,10 @@
 import Elysia, { t } from "elysia";
-import { authPlugin, requireRole } from "../plugins/rbac.ts";
-import { readdir, readFile, writeFile, unlink, rm, mkdir, stat } from "node:fs/promises";
+import { authPlugin, requireRole } from "../../plugins/rbac.ts";
+import { readdir, readFile, writeFile, rm, mkdir, stat } from "node:fs/promises";
 import path from "node:path";
-import { db, schema } from "../db/index.ts";
+import { db, schema } from "../../db/index.ts";
 import { eq } from "drizzle-orm";
-import { audit } from "../lib/audit.ts";
+import { audit } from "../../lib/audit.ts";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB read/write limit
 const MAX_UPLOAD_SIZE = 100 * 1024 * 1024; // 100 MB upload limit

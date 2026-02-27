@@ -1,8 +1,8 @@
 import Elysia from "elysia";
-import { authPlugin, requireRole } from "../plugins/rbac.ts";
-import { sendCommand, getOnlinePlayers, getServerStatus } from "../lib/rcon.ts";
-import { audit } from "../lib/audit.ts";
-import { db, schema } from "../db/index.ts";
+import { authPlugin, requireRole } from "../../plugins/rbac.ts";
+import { sendCommand, getOnlinePlayers, getServerStatus } from "../../lib/rcon.ts";
+import { audit } from "../../lib/audit.ts";
+import { db, schema } from "../../db/index.ts";
 import { eq } from "drizzle-orm";
 import fs from "node:fs";
 
@@ -38,6 +38,7 @@ function mcToAnsi(text: string): string {
   return text
     .replace(/[§&]([0-9a-fk-or])/gi, (_, code: string) => MC_ANSI[code.toLowerCase()] ?? "")
     // Append reset at end if the line had any codes
+    // eslint-disable-next-line no-control-regex
     .replace(/(\x1b\[\d+m.+)$/, "$1\x1b[0m");
 }
 
@@ -70,7 +71,7 @@ function startLogTailer(serverId: string, logPath: string) {
     const subs = consoleSubs.get(serverId);
     if (!subs || subs.size === 0) return;
 
-    let size = position;
+    let size!: number;
     try { size = fs.statSync(logPath).size; } catch { return; }
     if (size <= position) return;
 

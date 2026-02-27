@@ -1,11 +1,11 @@
 import Elysia, { t } from "elysia";
-import { authPlugin, requireRole } from "../plugins/rbac.ts";
+import { authPlugin, requireRole } from "../../plugins/rbac.ts";
 import { rename, unlink, readdir, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { db, schema } from "../db/index.ts";
+import { db, schema } from "../../db/index.ts";
 import { eq } from "drizzle-orm";
-import { audit } from "../lib/audit.ts";
+import { audit } from "../../lib/audit.ts";
 
 const SAFE_ID = /^[a-zA-Z0-9_-]+$/;
 const SAFE_FILENAME = /^[a-zA-Z0-9_\-.+ ]+\.jar(\.disabled)?$/;

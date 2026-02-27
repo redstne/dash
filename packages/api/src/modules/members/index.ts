@@ -1,9 +1,9 @@
 import Elysia, { t } from "elysia";
-import { authPlugin, requireRole } from "../plugins/rbac.ts";
-import { db, schema } from "../db/index.ts";
+import { authPlugin, requireRole } from "../../plugins/rbac.ts";
+import { db, schema } from "../../db/index.ts";
 import { eq } from "drizzle-orm";
-import { audit } from "../lib/audit.ts";
-import { auth } from "../auth/index.ts";
+import { audit } from "../../lib/audit.ts";
+import { auth } from "../../auth/index.ts";
 import { hashPassword } from "better-auth/crypto";
 
 export const membersRoute = new Elysia({ prefix: "/api/members" })

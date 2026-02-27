@@ -1,6 +1,6 @@
 import Elysia from "elysia";
-import { authPlugin } from "../plugins/rbac.ts";
-import { db, schema } from "../db/index.ts";
+import { authPlugin } from "../../plugins/rbac.ts";
+import { db, schema } from "../../db/index.ts";
 import { eq } from "drizzle-orm";
 import { statfsSync } from "node:fs";
 
