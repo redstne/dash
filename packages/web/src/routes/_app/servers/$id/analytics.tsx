@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, Users, Zap, Activity, ArrowRightLeft, MessageSquare } from "lucide-react";
+import { BarChart3, Users, Zap, Activity, ArrowRightLeft, MessageSquare, Cpu, MemoryStick, HardDrive } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { Progress } from "@/components/ui/progress.tsx";
 
 export const Route = createFileRoute("/_app/servers/$id/analytics")({
   component: AnalyticsPage,
@@ -63,6 +64,19 @@ function AnalyticsPage() {
     refetchInterval: 60_000,
   });
 
+  const { data: resources } = useQuery({
+    queryKey: ["resources", id],
+    queryFn: () => fetch(`/api/servers/${id}/resources`, { credentials: "include" }).then((r) => r.json()) as Promise<{
+      available: boolean;
+      cpu: number | null;
+      ramUsed: number | null;
+      ramTotal: number | null;
+      diskUsed: number | null;
+      diskTotal: number | null;
+    }>,
+    refetchInterval: 10_000,
+  });
+
   // Downsample to at most 40 bars for readability
   function downsample<T>(arr: T[], max: number): T[] {
     if (arr.length <= max) return arr;
@@ -80,6 +94,44 @@ function AnalyticsPage() {
 
   return (
     <div className="p-4 space-y-4">
+      {/* Resource Usage */}
+      {resources?.available && (
+        <Card className="p-3">
+          <div className="flex items-center gap-2 mb-3">
+            <Cpu className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold">Resource Usage</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {resources.cpu !== null && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Cpu className="w-3.5 h-3.5" /> CPU</div>
+                  <span className="text-xs font-medium">{resources.cpu.toFixed(1)}%</span>
+                </div>
+                <Progress value={resources.cpu} className="h-2" />
+              </div>
+            )}
+            {resources.ramUsed !== null && resources.ramTotal !== null && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><MemoryStick className="w-3.5 h-3.5" /> RAM</div>
+                  <span className="text-xs font-medium">{(resources.ramUsed / 1024 / 1024).toFixed(0)} / {(resources.ramTotal / 1024 / 1024).toFixed(0)} MB</span>
+                </div>
+                <Progress value={(resources.ramUsed / resources.ramTotal) * 100} className="h-2" />
+              </div>
+            )}
+            {resources.diskUsed !== null && resources.diskTotal !== null && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><HardDrive className="w-3.5 h-3.5" /> Disk</div>
+                  <span className="text-xs font-medium">{(resources.diskUsed / 1024 / 1024 / 1024).toFixed(1)} / {(resources.diskTotal / 1024 / 1024 / 1024).toFixed(1)} GB</span>
+                </div>
+                <Progress value={(resources.diskUsed / resources.diskTotal) * 100} className="h-2" />
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-3 bg-gradient-to-br from-blue-950/50 to-blue-900/30 border-blue-600/30">

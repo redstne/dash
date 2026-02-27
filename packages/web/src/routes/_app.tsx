@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/sidebar.tsx";
 import {
   Server, Users, ShieldCheck, LogOut, Zap, ChevronDown, Activity,
-  Terminal, Map, Package, FileText, AlertTriangle, BarChart3, Settings, HardDrive, ArrowLeft, Puzzle, Cpu,
+  Terminal, Map, Package, FileText, AlertTriangle, BarChart3, Settings, HardDrive, ArrowLeft, Puzzle, Cpu, Clock, Bell, Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 
@@ -54,6 +54,7 @@ const globalNav = [
 const serverNav = [
   { label: "Console",   icon: Terminal,       tab: "console" },
   { label: "Players",   icon: Users,          tab: "players" },
+  { label: "Whitelist", icon: Shield,         tab: "whitelist" },
   { label: "Live Map",  icon: Map,            tab: "map" },
   { label: "Plugins",   icon: Package,        tab: "plugins" },
   { label: "Runtime",   icon: Cpu,            tab: "runtime" },
@@ -61,6 +62,8 @@ const serverNav = [
   { label: "Alerts",    icon: AlertTriangle,  tab: "alerts" },
   { label: "Analytics", icon: BarChart3,      tab: "analytics" },
   { label: "Backups",   icon: HardDrive,      tab: "backups" },
+  { label: "Schedule",  icon: Clock,          tab: "schedule" },
+  { label: "Webhooks",  icon: Bell,           tab: "webhooks" },
   { label: "Settings",  icon: Settings,       tab: "settings" },
 ] as const;
 

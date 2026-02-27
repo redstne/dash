@@ -18,6 +18,9 @@ import { Route as AppServersIdRouteImport } from './routes/_app/servers/$id'
 import { Route as AppServersIdSettingsRouteImport } from './routes/_app/servers/$id/settings'
 import { Route as AppServersIdPluginsRouteImport } from './routes/_app/servers/$id/plugins'
 import { Route as AppServersIdRuntimeRouteImport } from './routes/_app/servers/$id/runtime'
+import { Route as AppServersIdScheduleRouteImport } from './routes/_app/servers/$id/schedule'
+import { Route as AppServersIdWebhooksRouteImport } from './routes/_app/servers/$id/webhooks'
+import { Route as AppServersIdWhitelistRouteImport } from './routes/_app/servers/$id/whitelist'
 import { Route as AppServersIdPlayersRouteImport } from './routes/_app/servers/$id/players'
 import { Route as AppServersIdMapRouteImport } from './routes/_app/servers/$id/map'
 import { Route as AppServersIdFilesRouteImport } from './routes/_app/servers/$id/files'
@@ -68,6 +71,21 @@ const AppServersIdPluginsRoute = AppServersIdPluginsRouteImport.update({
 const AppServersIdRuntimeRoute = AppServersIdRuntimeRouteImport.update({
   id: '/runtime',
   path: '/runtime',
+  getParentRoute: () => AppServersIdRoute,
+} as any)
+const AppServersIdScheduleRoute = AppServersIdScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
+  getParentRoute: () => AppServersIdRoute,
+} as any)
+const AppServersIdWebhooksRoute = AppServersIdWebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
+  getParentRoute: () => AppServersIdRoute,
+} as any)
+const AppServersIdWhitelistRoute = AppServersIdWhitelistRouteImport.update({
+  id: '/whitelist',
+  path: '/whitelist',
   getParentRoute: () => AppServersIdRoute,
 } as any)
 const AppServersIdPlayersRoute = AppServersIdPlayersRouteImport.update({
@@ -121,6 +139,9 @@ export interface FileRoutesByFullPath {
   '/servers/$id/players': typeof AppServersIdPlayersRoute
   '/servers/$id/plugins': typeof AppServersIdPluginsRoute
   '/servers/$id/runtime': typeof AppServersIdRuntimeRoute
+  '/servers/$id/schedule': typeof AppServersIdScheduleRoute
+  '/servers/$id/webhooks': typeof AppServersIdWebhooksRoute
+  '/servers/$id/whitelist': typeof AppServersIdWhitelistRoute
   '/servers/$id/settings': typeof AppServersIdSettingsRoute
 }
 export interface FileRoutesByTo {
@@ -157,6 +178,9 @@ export interface FileRoutesById {
   '/_app/servers/$id/players': typeof AppServersIdPlayersRoute
   '/_app/servers/$id/plugins': typeof AppServersIdPluginsRoute
   '/_app/servers/$id/runtime': typeof AppServersIdRuntimeRoute
+  '/_app/servers/$id/schedule': typeof AppServersIdScheduleRoute
+  '/_app/servers/$id/webhooks': typeof AppServersIdWebhooksRoute
+  '/_app/servers/$id/whitelist': typeof AppServersIdWhitelistRoute
   '/_app/servers/$id/settings': typeof AppServersIdSettingsRoute
 }
 export interface FileRouteTypes {
@@ -176,6 +200,9 @@ export interface FileRouteTypes {
     | '/servers/$id/players'
     | '/servers/$id/plugins'
     | '/servers/$id/runtime'
+    | '/servers/$id/schedule'
+    | '/servers/$id/webhooks'
+    | '/servers/$id/whitelist'
     | '/servers/$id/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -193,6 +220,9 @@ export interface FileRouteTypes {
     | '/servers/$id/players'
     | '/servers/$id/plugins'
     | '/servers/$id/runtime'
+    | '/servers/$id/schedule'
+    | '/servers/$id/webhooks'
+    | '/servers/$id/whitelist'
     | '/servers/$id/settings'
   id:
     | '__root__'
@@ -211,6 +241,9 @@ export interface FileRouteTypes {
     | '/_app/servers/$id/players'
     | '/_app/servers/$id/plugins'
     | '/_app/servers/$id/runtime'
+    | '/_app/servers/$id/schedule'
+    | '/_app/servers/$id/webhooks'
+    | '/_app/servers/$id/whitelist'
     | '/_app/servers/$id/settings'
   fileRoutesById: FileRoutesById
 }
@@ -333,6 +366,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppServersIdRuntimeRouteImport
       parentRoute: typeof AppServersIdRoute
     }
+    '/_app/servers/$id/schedule': {
+      id: '/_app/servers/$id/schedule'
+      path: '/schedule'
+      fullPath: '/servers/$id/schedule'
+      preLoaderRoute: typeof AppServersIdScheduleRouteImport
+      parentRoute: typeof AppServersIdRoute
+    }
+    '/_app/servers/$id/webhooks': {
+      id: '/_app/servers/$id/webhooks'
+      path: '/webhooks'
+      fullPath: '/servers/$id/webhooks'
+      preLoaderRoute: typeof AppServersIdWebhooksRouteImport
+      parentRoute: typeof AppServersIdRoute
+    }
+    '/_app/servers/$id/whitelist': {
+      id: '/_app/servers/$id/whitelist'
+      path: '/whitelist'
+      fullPath: '/servers/$id/whitelist'
+      preLoaderRoute: typeof AppServersIdWhitelistRouteImport
+      parentRoute: typeof AppServersIdRoute
+    }
   }
 }
 
@@ -346,6 +400,9 @@ interface AppServersIdRouteChildren {
   AppServersIdPlayersRoute: typeof AppServersIdPlayersRoute
   AppServersIdPluginsRoute: typeof AppServersIdPluginsRoute
   AppServersIdRuntimeRoute: typeof AppServersIdRuntimeRoute
+  AppServersIdScheduleRoute: typeof AppServersIdScheduleRoute
+  AppServersIdWebhooksRoute: typeof AppServersIdWebhooksRoute
+  AppServersIdWhitelistRoute: typeof AppServersIdWhitelistRoute
   AppServersIdSettingsRoute: typeof AppServersIdSettingsRoute
 }
 
@@ -359,6 +416,9 @@ const AppServersIdRouteChildren: AppServersIdRouteChildren = {
   AppServersIdPlayersRoute: AppServersIdPlayersRoute,
   AppServersIdPluginsRoute: AppServersIdPluginsRoute,
   AppServersIdRuntimeRoute: AppServersIdRuntimeRoute,
+  AppServersIdScheduleRoute: AppServersIdScheduleRoute,
+  AppServersIdWebhooksRoute: AppServersIdWebhooksRoute,
+  AppServersIdWhitelistRoute: AppServersIdWhitelistRoute,
   AppServersIdSettingsRoute: AppServersIdSettingsRoute,
 }
 

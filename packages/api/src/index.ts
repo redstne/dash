@@ -12,6 +12,10 @@ import { analyticsRoute } from "./routes/analytics.ts";
 import { backupsRoute } from "./routes/backups.ts";
 import { modsRoute } from "./routes/mods.ts";
 import { runtimeRoute } from "./routes/runtime.ts";
+import { scheduleRoute, startTaskScheduler } from "./routes/schedule.ts";
+import { webhooksRoute } from "./routes/webhooks.ts";
+import { whitelistRoute } from "./routes/whitelist.ts";
+import { resourcesRoute } from "./routes/resources.ts";
 import { startBackupScheduler } from "./lib/backup.ts";
 import { existsSync, mkdirSync } from "node:fs";
 import { db, schema } from "./db/index.ts";
@@ -95,6 +99,10 @@ const app = new Elysia()
   .use(backupsRoute)
   .use(modsRoute)
   .use(runtimeRoute)
+  .use(scheduleRoute)
+  .use(webhooksRoute)
+  .use(whitelistRoute)
+  .use(resourcesRoute)
   // ── Health check ─────────────────────────────────────────────────────────
   .get("/api/health", () => ({ status: "ok", ts: Date.now() }))
   // ── Serve built React SPA (production) ───────────────────────────────────
@@ -116,6 +124,7 @@ if (process.env["NODE_ENV"] !== "production") {
 
 // Start scheduled backup runner
 startBackupScheduler();
+startTaskScheduler();
 
 // Export the app type for Eden E2E type safety in the web package
 // Export the app type for Eden E2E type safety in the web package

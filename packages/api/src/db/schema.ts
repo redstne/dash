@@ -149,3 +149,42 @@ export const backupRuns = sqliteTable("backup_runs", {
 
 export type BackupConfig = typeof backupConfigs.$inferSelect;
 export type BackupRun = typeof backupRuns.$inferSelect;
+
+// ── Scheduled Tasks ────────────────────────────────────────────────────────
+export const scheduledTasks = sqliteTable("scheduled_tasks", {
+  id: text("id").primaryKey(),
+  serverId: text("server_id").notNull().references(() => servers.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  /** 'command' | 'restart' | 'stop' */
+  type: text("type").notNull(),
+  /** RCON command to run (only when type='command') */
+  command: text("command"),
+  /** 'hourly' | '2h' | '6h' | 'daily' | 'weekly' */
+  schedule: text("schedule").notNull(),
+  /** HH:MM for daily/weekly tasks, null for interval-based */
+  timeOfDay: text("time_of_day"),
+  /** 0=Sun … 6=Sat for weekly tasks */
+  dayOfWeek: integer("day_of_week"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  lastRunAt: integer("last_run_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// ── Webhooks ───────────────────────────────────────────────────────────────
+export const webhooks = sqliteTable("webhooks", {
+  id: text("id").primaryKey(),
+  serverId: text("server_id").notNull().references(() => servers.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  /** JSON array of event strings, e.g. ["alert.critical","player.ban"] */
+  events: text("events").notNull().default("[]"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type ScheduledTask = typeof scheduledTasks.$inferSelect;
+export type Webhook = typeof webhooks.$inferSelect;
