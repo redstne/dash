@@ -17,12 +17,13 @@ export const securityHeaders = new Elysia({ name: "security-headers" }).onAfterH
       const wsOrigin = origin.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
       set.headers["Content-Security-Policy"] = [
         "default-src 'self'",
-        "script-src 'self'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob: https://cdn.modrinth.com",
+        "script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net",
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+        "img-src 'self' data: blob: https://cdn.modrinth.com https://mc-heads.net",
         `connect-src 'self'${wsOrigin ? ` ${wsOrigin}` : ""}`,
-        "font-src 'self'",
+        "font-src 'self' https://cdn.jsdelivr.net",
         "frame-src 'self'",
+        "worker-src 'self' blob:",
       ].join("; ");
     }
   }

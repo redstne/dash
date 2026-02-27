@@ -1,7 +1,7 @@
 services:
-  # ── RedstnKit Dashboard ──────────────────────────────────────────────────
+  # ── redstne Dashboard ──────────────────────────────────────────────────
   dashboard:
-    # image: ghcr.io/redstnkit/dash:latest
+    # image: ghcr.io/redstne/dash:latest
     # Uncomment to build locally instead:
     build:
       context: .
@@ -10,32 +10,21 @@ services:
       - "3001:3001"
     environment:
       NODE_ENV: production
-      PORT: 3001
+      DB_PATH: /data/redstne.db
+      # Set BASE_URL to your public URL when not running on localhost
       BASE_URL: ${BASE_URL:-http://localhost:3001}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required (64 hex chars)}
-      # Initial admin bootstrap (Postgres-style: direct value or *_FILE for Docker secrets)
-      REDSTNKIT_ADMIN_EMAIL: ${REDSTNKIT_ADMIN_EMAIL:-}
-      REDSTNKIT_ADMIN_EMAIL_FILE: ${REDSTNKIT_ADMIN_EMAIL_FILE:-}
-      REDSTNKIT_ADMIN_PASSWORD: ${REDSTNKIT_ADMIN_PASSWORD:-}
-      REDSTNKIT_ADMIN_PASSWORD_FILE: ${REDSTNKIT_ADMIN_PASSWORD_FILE:-}
-      REDSTNKIT_ADMIN_NAME: ${REDSTNKIT_ADMIN_NAME:-Admin}
-      DB_PATH: /data/redstnkit.db
-      # Set to "true" when running behind an HTTPS reverse proxy
-      SECURE_COOKIES: ${SECURE_COOKIES:-false}
-      # Path where Minecraft server files are volume-mounted
-      SERVER_FILES_ROOT: /data/servers
-      # Path to Minecraft server log (auto-configured when using the built-in MC service)
-      MC_LOG_PATH: /data/mc/logs/latest.log
+      # Auto-seed the bundled Minecraft server — remove if managing servers manually
+      MC_SERVER_1_NAME: ${MC_SERVER_1_NAME:-Minecraft}
+      MC_SERVER_1_HOST: dash-minecraft-1.dash_redstne
+      MC_SERVER_1_PORT: 25575
+      MC_SERVER_1_PASSWORD: ${MC_RCON_PASSWORD:?MC_RCON_PASSWORD is required}
+      MC_SERVER_1_LOG_PATH: /data/mc/logs/latest.log
     volumes:
       - ./data:/data
       - minecraft_data:/data/mc  # shared access to MC server files
-      # Optional: mount your rclone config for Proton Drive, Google Drive, etc.
-      # - ${RCLONE_CONFIG:-./data/rclone.conf}:/root/.config/rclone/rclone.conf:ro
     restart: unless-stopped
     networks:
-      - redstnkit
+      - redstne
 
   # ── Sample Minecraft Server (dev/demo) ───────────────────────────────────
   minecraft:
@@ -48,6 +37,8 @@ services:
       RCON_PORT: 25575
       TYPE: PAPER
       VERSION: LATEST
+      # redstne.dash managed plugin list — updated automatically when plugins are installed
+      PLUGINS_FILE: /data/redstne-plugins.txt
     ports:
       - "25565:25565"
       - "25575:25575"
@@ -55,11 +46,11 @@ services:
       - minecraft_data:/data
     restart: unless-stopped
     networks:
-      - redstnkit
+      - redstne
 
 volumes:
   minecraft_data:
 
 networks:
-  redstnkit:
+  redstne:
     driver: bridge

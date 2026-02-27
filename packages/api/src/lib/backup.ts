@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type StorageType = "local" | "s3" | "sftp" | "rclone";
+export type StorageType = "local" | "s3" | "sftp" | "rclone" | "gdrive";
 
 export interface LocalConfig {
   type: "local";
@@ -42,11 +42,21 @@ export interface SftpConfig {
 
 export interface RcloneConfig {
   type: "rclone";
-  remote: string;         // pre-configured rclone remote name, e.g. "proton"
+  remote: string;         // remote name as defined in the config, e.g. "gdrive"
   path: string;           // path on the remote, e.g. "Backups/minecraft"
+  /** Optional raw rclone config INI content — written as the config file for this run */
+  configContent?: string;
 }
 
-export type BackupStorageConfig = LocalConfig | S3Config | SftpConfig | RcloneConfig;
+export interface GdriveConfig {
+  type: "gdrive";
+  /** Full JSON content of a Google service account key file */
+  serviceAccountJson: string;
+  /** Google Drive folder ID (from the URL: drive.google.com/drive/folders/{id}) */
+  folderId: string;
+}
+
+export type BackupStorageConfig = LocalConfig | S3Config | SftpConfig | RcloneConfig | GdriveConfig;
 
 // ── Encrypt / decrypt config ───────────────────────────────────────────────
 
@@ -108,7 +118,26 @@ pass = ${obscured}
     return confPath;
   }
 
-  // For "rclone" type, use the system rclone config (mounted from host)
+  if (config.type === "gdrive") {
+    const saPath = `/tmp/gdrive-sa-${runId}.json`;
+    await Bun.write(saPath, config.serviceAccountJson);
+    const content = `[remote]
+type = drive
+scope = drive
+service_account_file = ${saPath}
+root_folder_id = ${config.folderId}
+`;
+    await Bun.write(confPath, content);
+    return confPath;
+  }
+
+  // For "rclone" type with inline config content, write it directly
+  if (config.type === "rclone" && config.configContent) {
+    await Bun.write(confPath, config.configContent);
+    return confPath;
+  }
+
+  // For "rclone" type without configContent, use the system rclone config (mounted from host)
   return null;
 }
 
@@ -207,6 +236,9 @@ async function executeBackup(
         remoteDest = `remote:${storageConfig.bucket}/${storageConfig.prefix}/`.replace(/\/+$/, "/");
       } else if (storageConfig.type === "sftp") {
         remoteDest = `remote:${storageConfig.path}/`;
+      } else if (storageConfig.type === "gdrive") {
+        // root_folder_id is set in the rclone config, so we upload to the remote root
+        remoteDest = `remote:`;
       } else {
         // pre-configured rclone remote
         remoteDest = `${storageConfig.remote}:${storageConfig.path}/`;
@@ -247,6 +279,8 @@ async function executeBackup(
     // Cleanup temp files
     try { await unlink(tmpFile); } catch { /* already gone */ }
     if (rcloneConf) try { await unlink(rcloneConf); } catch { /* already gone */ }
+    // Cleanup gdrive service account temp file
+    try { await unlink(`/tmp/gdrive-sa-${runId}.json`); } catch { /* not present for non-gdrive */ }
   }
 }
 

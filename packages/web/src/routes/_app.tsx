@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/sidebar.tsx";
 import {
   Server, Users, ShieldCheck, LogOut, Zap, ChevronDown, Activity,
-  Terminal, Map, Package, FileText, AlertTriangle, BarChart3, Settings, HardDrive, ArrowLeft, Puzzle, Cpu, Clock, Bell, Shield, ScrollText,
+  Terminal, Map, Package, FileText, AlertTriangle, BarChart3, Settings, HardDrive, ArrowLeft, Puzzle, Clock, Bell, Shield, ScrollText, Globe2, LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 
@@ -52,14 +52,15 @@ const globalNav = [
 ] as const;
 
 const serverNav = [
+  { label: "Overview",  icon: LayoutDashboard, tab: "overview" },
   { label: "Console",   icon: Terminal,       tab: "console" },
   { label: "Logs",      icon: ScrollText,     tab: "logs" },
   { label: "Players",   icon: Users,          tab: "players" },
   { label: "Whitelist", icon: Shield,         tab: "whitelist" },
   { label: "Live Map",  icon: Map,            tab: "map" },
   { label: "Plugins",   icon: Package,        tab: "plugins" },
-  { label: "Runtime",   icon: Cpu,            tab: "runtime" },
   { label: "Files",     icon: FileText,       tab: "files" },
+  { label: "Worlds",    icon: Globe2,         tab: "worlds" },
   { label: "Alerts",    icon: AlertTriangle,  tab: "alerts" },
   { label: "Analytics", icon: BarChart3,      tab: "analytics" },
   { label: "Backups",   icon: HardDrive,      tab: "backups" },
@@ -89,7 +90,7 @@ function ServerSelector() {
       <DropdownMenuContent align="end" className="w-56">
         {servers.map((s) => (
           <DropdownMenuItem key={s.id}
-            onClick={() => void navigate({ to: "/servers/$id/console", params: { id: s.id } })}
+            onClick={() => void navigate({ to: "/servers/$id/overview", params: { id: s.id } })}
             className="flex items-center gap-2">
             <div className={cn("w-1.5 h-1.5 rounded-full", s.enabled ? "bg-green-500" : "bg-gray-500")} />
             <span>{s.name}</span>
@@ -144,7 +145,7 @@ function AppSidebar() {
             <div className="absolute inset-0 w-5 h-5 bg-red-600 blur-lg opacity-40 animate-pulse" />
           </div>
           <span className="text-sm font-bold bg-gradient-to-r from-red-500 via-orange-500 to-red-600 bg-clip-text text-transparent">
-            redstnkit.dash
+            redstne.dash
           </span>
         </div>
       </SidebarHeader>
@@ -167,7 +168,7 @@ function AppSidebar() {
                   <Separator className="my-1 bg-sidebar-border" />
                   {/* Server tabs */}
                   {resolvedNav.map(({ label, icon: Icon, tab }) => {
-                    const isActive = currentTab === tab || (tab === "console" && !currentTab);
+                    const isActive = currentTab === tab || (tab === "overview" && !currentTab);
                     return (
                       <SidebarMenuItem key={tab}>
                         <SidebarMenuButton
@@ -239,9 +240,9 @@ function AppLayout() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full">
+      <div className="flex h-screen overflow-hidden w-full">
         <AppSidebar />
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           {/* Header */}
           <header className="border-b bg-card sticky top-0 z-20 shadow-md shadow-red-600/5">
             <div className="flex items-center gap-3 px-4 py-2.5">

@@ -1,7 +1,7 @@
 /**
  * Bootstrap seed:
  *
- * 1. Admin user — from REDSTNKIT_ADMIN_EMAIL / REDSTNKIT_ADMIN_PASSWORD (or *_FILE).
+ * 1. Admin user — from REDSTNE_ADMIN_EMAIL / REDSTNE_ADMIN_PASSWORD (or *_FILE).
  *    Nothing happens if an admin already exists.
  *
  * 2. Minecraft servers — from MC_SERVERS (JSON array) or MC_SERVERS_FILE.
@@ -19,6 +19,18 @@ import { auth } from "../auth/index.ts";
 import { encrypt } from "../lib/crypto.ts";
 import { nanoid } from "nanoid";
 
+function jsonLog(level: string, msg: string, extra: Record<string, unknown> = {}) {
+  process.stdout.write(JSON.stringify({ ts: new Date().toISOString(), level, msg, ...extra }) + "\n");
+}
+
+function randomPassword(): string {
+  // 16 URL-safe chars — strong enough, easy to copy
+  const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%";
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map((b) => chars[b % chars.length])
+    .join("");
+}
+
 function readEnvOrFile(envKey: string, fileEnvKey: string): string | undefined {
   const direct = process.env[envKey];
   if (direct) return direct.trim();
@@ -28,7 +40,7 @@ function readEnvOrFile(envKey: string, fileEnvKey: string): string | undefined {
     try {
       return readFileSync(filePath, "utf8").trim();
     } catch {
-      console.error(`[seed] Cannot read ${fileEnvKey}=${filePath}`);
+      jsonLog("error", `seed: cannot read ${fileEnvKey}`, { path: filePath });
     }
   }
   return undefined;
@@ -47,41 +59,29 @@ export async function seed() {
     return;
   }
 
-  const email = readEnvOrFile("REDSTNKIT_ADMIN_EMAIL", "REDSTNKIT_ADMIN_EMAIL_FILE");
-  const password = readEnvOrFile("REDSTNKIT_ADMIN_PASSWORD", "REDSTNKIT_ADMIN_PASSWORD_FILE");
-  const name = process.env["REDSTNKIT_ADMIN_NAME"] ?? "Admin";
+  const email = readEnvOrFile("REDSTNE_ADMIN_EMAIL", "REDSTNE_ADMIN_EMAIL_FILE") ?? "admin@localhost";
+  const password = readEnvOrFile("REDSTNE_ADMIN_PASSWORD", "REDSTNE_ADMIN_PASSWORD_FILE") ?? randomPassword();
+  const name = process.env["REDSTNE_ADMIN_NAME"] ?? "Admin";
 
-  if (!email || !password) {
-    console.warn(
-      "[seed] ⚠️  No admin user exists and no credentials provided.\n" +
-        "       Set REDSTNKIT_ADMIN_EMAIL and REDSTNKIT_ADMIN_PASSWORD (or *_FILE variants)\n" +
-        "       to bootstrap the first admin account automatically."
-    );
-    return;
-  }
+  if (!email || !password) return;
 
   if (password.length < 12) {
-    throw new Error(
-      "[seed] REDSTNKIT_ADMIN_PASSWORD must be at least 12 characters."
-    );
+    throw new Error("[seed] REDSTNE_ADMIN_PASSWORD must be at least 12 characters.");
   }
 
-  // Use Better Auth's own sign-up to hash the password and create the account
-  const res = await auth.api.signUpEmail({
-    body: { email, password, name },
+  const res = await auth.api.signUpEmail({ body: { email, password, name } });
+
+  if (!res?.user?.id) throw new Error("[seed] Failed to create admin user via Better Auth.");
+
+  await db.update(schema.users).set({ role: "admin" }).where(eq(schema.users.id, res.user.id));
+
+  jsonLog("info", "admin user created", {
+    email,
+    // Only print password when it was auto-generated (not provided via env)
+    ...(!process.env["REDSTNE_ADMIN_PASSWORD"] && !process.env["REDSTNE_ADMIN_PASSWORD_FILE"]
+      ? { generated_password: password, notice: "Save this password — it will not be shown again" }
+      : {}),
   });
-
-  if (!res?.user?.id) {
-    throw new Error("[seed] Failed to create admin user via Better Auth.");
-  }
-
-  // Promote to admin role
-  await db
-    .update(schema.users)
-    .set({ role: "admin" })
-    .where(eq(schema.users.id, res.user.id));
-
-  console.log(`[seed] ✅ Admin user created: ${email}`);
 }
 
 // ── Server seeding ─────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ function readServerEntries(): ServerEntry[] {
         }
       }
     } catch {
-      console.error("[seed] MC_SERVERS is not valid JSON — skipping JSON server seeding");
+      jsonLog("error", "MC_SERVERS is not valid JSON — skipping server seeding");
     }
   }
 
@@ -169,7 +169,7 @@ export async function seedServers() {
           ...(entry.logPath !== undefined ? { logPath: entry.logPath } : {}),
         })
         .where(eq(schema.servers.name, entry.name));
-      console.log(`[seed] 🔄  Server updated: ${entry.name}`);
+      jsonLog("info", "server updated", { name: entry.name });
     } else {
       await db.insert(schema.servers).values({
         id: nanoid(),
@@ -180,7 +180,7 @@ export async function seedServers() {
         dynmapUrl: entry.dynmapUrl,
         logPath: entry.logPath,
       });
-      console.log(`[seed] ✅  Server seeded: ${entry.name} (${entry.host}:${entry.rconPort ?? 25575})`);
+      jsonLog("info", "server seeded", { name: entry.name, host: entry.host, port: entry.rconPort ?? 25575 });
     }
   }
 }

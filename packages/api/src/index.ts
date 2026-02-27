@@ -1,9 +1,14 @@
+// Must be the very first import — runs synchronously to set BETTER_AUTH_SECRET
+// and ENCRYPTION_KEY from data/.secrets before any other module reads them.
+import "./lib/secrets.ts";
+
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { rateLimit } from "elysia-rate-limit";
 import { auth } from "./auth/index.ts";
 import { securityHeaders } from "./plugins/security.ts";
+import { loggerPlugin } from "./plugins/logger.ts";
 import { serversRoute } from "./modules/servers/index.ts";
 import { consoleRoute, playersRoute } from "./modules/console/index.ts";
 import { filesRoute } from "./modules/files/index.ts";
@@ -18,21 +23,19 @@ import { whitelistRoute } from "./modules/whitelist/index.ts";
 import { resourcesRoute } from "./modules/resources/index.ts";
 import { logsRoute, logsTailRoute } from "./modules/logs/index.ts";
 import { playersManagementRoute } from "./modules/players/index.ts";
+import { worldsRoute } from "./modules/worlds/index.ts";
+import { getServerStatus } from "./lib/rcon.ts";
 import { startBackupScheduler } from "./lib/backup.ts";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { db, schema } from "./db/index.ts";
-import { lt } from "drizzle-orm";
+import { lt, eq } from "drizzle-orm";
 
 // Ensure data directory exists
 if (!existsSync("data")) mkdirSync("data", { recursive: true });
 
 // Warn if running in production without HTTPS cookie protection
 if (process.env["NODE_ENV"] === "production" && process.env["SECURE_COOKIES"] !== "true") {
-  console.warn(
-    "⚠️  WARNING: SECURE_COOKIES is not set to 'true'.\n" +
-    "   Session cookies are NOT protected against interception.\n" +
-    "   Set SECURE_COOKIES=true when running behind an HTTPS reverse proxy."
-  );
+  process.stdout.write(JSON.stringify({ ts: new Date().toISOString(), level: "warn", msg: "SECURE_COOKIES not set — session cookies are unprotected. Set SECURE_COOKIES=true behind HTTPS." }) + "\n");
 }
 
 // Prune audit log entries older than 90 days — runs once at startup then daily
@@ -43,10 +46,32 @@ async function pruneAuditLog() {
 pruneAuditLog().catch(() => {});
 setInterval(() => pruneAuditLog().catch(() => {}), 24 * 60 * 60 * 1000);
 
+// Ensure redstne-plugins.txt exists for every server that has a logPath
+// so the itzg container doesn't error on startup when PLUGINS_FILE is set.
+async function ensurePluginManifests() {
+  const servers = await db.select({ logPath: schema.servers.logPath }).from(schema.servers);
+  for (const s of servers) {
+    if (!s.logPath) continue;
+    try {
+      const parts = s.logPath.split("/");
+      const logsIdx = parts.lastIndexOf("logs");
+      if (logsIdx === -1) continue;
+      const serverRoot = parts.slice(0, logsIdx).join("/") || "/";
+      const manifestPath = `${serverRoot}/redstne-plugins.txt`;
+      if (!existsSync(manifestPath)) {
+        writeFileSync(manifestPath, "# redstne.dash managed plugin list\n# Install plugins from the dashboard to populate this file.\n", "utf-8");
+      }
+    } catch { /* best effort */ }
+  }
+}
+ensurePluginManifests().catch(() => {});
+
 const PORT = Number(process.env["PORT"] ?? 3001);
-const ALLOWED_ORIGIN = process.env["CORS_ORIGIN"] ?? "http://localhost:3001";
+const ALLOWED_ORIGIN = process.env["BASE_URL"] ?? `http://localhost:${PORT}`;
 
 export const app = new Elysia()
+  // ── Logging ──────────────────────────────────────────────────────────────
+  .use(loggerPlugin)
   // ── Security ────────────────────────────────────────────────────────────
   .use(securityHeaders)
   .use(
@@ -68,7 +93,7 @@ export const app = new Elysia()
     })
   )
   // ── API docs ─────────────────────────────────────────────────────────────
-  .use(swagger({ path: "/api/docs", documentation: { info: { title: "RedstnKit API", version: "1.0.0", description: "Minecraft server management dashboard API" } } }))
+  .use(swagger({ path: "/api/docs", documentation: { info: { title: "redstne API", version: "1.0.0", description: "Minecraft server management dashboard API" } } }))
   // ── Better Auth handler ───────────────────────────────────────────────────
   // Elysia's global hooks consume request.body before our handler runs.
   // We re-serialise from the already-parsed `body` context value so Better
@@ -104,6 +129,22 @@ export const app = new Elysia()
   .use(logsRoute)
   .use(logsTailRoute)
   .use(playersManagementRoute)
+  .use(worldsRoute)
+  // ── Public status endpoint (no auth) ──────────────────────────────────────
+  .get("/api/public/:serverId/status", async ({ params }) => {
+    const [server] = await db
+      .select({ id: schema.servers.id, name: schema.servers.name, host: schema.servers.host })
+      .from(schema.servers)
+      .where(eq(schema.servers.id, params.serverId))
+      .limit(1);
+    if (!server) return { error: "Not found" };
+    try {
+      const st = await getServerStatus(server.id);
+      return { name: server.name, host: server.host, ...st };
+    } catch {
+      return { name: server.name, host: server.host, online: false, players: [], playerCount: 0, maxPlayers: 0, tps: null };
+    }
+  })
   // ── Health check ─────────────────────────────────────────────────────────
   .get("/api/health", () => ({ status: "ok", ts: Date.now() }))
   // ── Serve built React SPA (production) ───────────────────────────────────
@@ -118,8 +159,7 @@ export const app = new Elysia()
   .get("/*", () => Bun.file("public/index.html"))
   .listen(PORT);
 
-console.log(`🚀 RedstnKit API running on http://localhost:${PORT}`);
-console.log(`📖 Swagger docs at http://localhost:${PORT}/api/docs`);
+process.stdout.write(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: `redstne API running on http://localhost:${PORT}`, port: PORT, docs: `/api/docs` }) + "\n");
 
 // Start scheduled backup runner
 startBackupScheduler();

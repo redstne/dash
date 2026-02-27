@@ -1,6 +1,6 @@
 import { Rcon } from "rcon-client";
 import { db, schema } from "../db/index.ts";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { decrypt } from "./crypto.ts";
 
 interface RconConnection {
@@ -100,6 +100,9 @@ import { recordSample } from "./analytics.ts";
 const statusCache = new Map<string, { status: ServerStatus; at: number }>();
 const STATUS_TTL_MS = 5_000;
 
+// Track previous player sets to detect joins/leaves for session recording
+const prevPlayersMap = new Map<string, Set<string>>();
+
 export async function getServerStatus(serverId: string): Promise<ServerStatus> {
   const cached = statusCache.get(serverId);
   if (cached && Date.now() - cached.at < STATUS_TTL_MS) return cached.status;
@@ -128,6 +131,30 @@ export async function getServerStatus(serverId: string): Promise<ServerStatus> {
     const status: ServerStatus = { online: true, players, playerCount, maxPlayers, tps };
     statusCache.set(serverId, { status, at: Date.now() });
     recordSample(serverId, tps, playerCount);
+
+    // Track join/leave sessions
+    const prev = prevPlayersMap.get(serverId) ?? new Set<string>();
+    const curr = new Set(players);
+    const joined = players.filter((p) => !prev.has(p));
+    const left = [...prev].filter((p) => !curr.has(p));
+    if (joined.length > 0) {
+      await db.insert(schema.playerSessions).values(
+        joined.map((playerName) => ({ serverId, playerName, joinedAt: new Date() }))
+      ).catch(() => {});
+    }
+    if (left.length > 0) {
+      for (const playerName of left) {
+        await db.update(schema.playerSessions)
+          .set({ leftAt: new Date() })
+          .where(and(
+            eq(schema.playerSessions.serverId, serverId),
+            eq(schema.playerSessions.playerName, playerName),
+            isNull(schema.playerSessions.leftAt),
+          )).catch(() => {});
+      }
+    }
+    prevPlayersMap.set(serverId, curr);
+
     return status;
   } catch {
     const status: ServerStatus = { online: false, players: [], playerCount: 0, maxPlayers: 0, tps: null };

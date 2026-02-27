@@ -61,7 +61,7 @@ function LoginPage() {
           </div>
           <div>
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-red-500 via-orange-500 to-red-600 bg-clip-text text-transparent">
-              redstnkit.dash
+              redstne.dash
             </CardTitle>
             <CardDescription className="text-sm mt-2">
               Minecraft Server Management Platform

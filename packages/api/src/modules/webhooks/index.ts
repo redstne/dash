@@ -48,7 +48,7 @@ export async function fireWebhooks(serverId: string, event: WebhookEvent, payloa
         description: JSON.stringify(payload, null, 2).slice(0, 4000),
         color: getWebhookColor(event),
         timestamp: new Date().toISOString(),
-        footer: { text: "redstnkit/dash" },
+        footer: { text: "redstne/dash" },
       }],
     });
 
@@ -172,11 +172,11 @@ export const webhooksRoute = new Elysia({ prefix: "/api/servers" })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           embeds: [{
-            title: "🔔 Test webhook from redstnkit/dash",
+            title: "🔔 Test webhook from redstne/dash",
             description: `Webhook **${hook.name}** is working correctly.`,
             color: 0x22c55e,
             timestamp: new Date().toISOString(),
-            footer: { text: "redstnkit/dash" },
+            footer: { text: "redstne/dash" },
           }],
         }),
       });

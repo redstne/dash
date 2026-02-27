@@ -12,24 +12,27 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as StatusIdRouteImport } from './routes/status.$id'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppServersIdRouteImport } from './routes/_app/servers/$id'
+import { Route as AppServersIdWorldsRouteImport } from './routes/_app/servers/$id/worlds'
 import { Route as AppServersIdWhitelistRouteImport } from './routes/_app/servers/$id/whitelist'
 import { Route as AppServersIdWebhooksRouteImport } from './routes/_app/servers/$id/webhooks'
 import { Route as AppServersIdSettingsRouteImport } from './routes/_app/servers/$id/settings'
 import { Route as AppServersIdScheduleRouteImport } from './routes/_app/servers/$id/schedule'
 import { Route as AppServersIdRuntimeRouteImport } from './routes/_app/servers/$id/runtime'
 import { Route as AppServersIdPluginsRouteImport } from './routes/_app/servers/$id/plugins'
-import { Route as AppServersIdPlayersNameRouteImport } from './routes/_app/servers/$id/players.$name'
 import { Route as AppServersIdPlayersRouteImport } from './routes/_app/servers/$id/players'
+import { Route as AppServersIdOverviewRouteImport } from './routes/_app/servers/$id/overview'
 import { Route as AppServersIdMapRouteImport } from './routes/_app/servers/$id/map'
-import { Route as AppServersIdFilesRouteImport } from './routes/_app/servers/$id/files'
 import { Route as AppServersIdLogsRouteImport } from './routes/_app/servers/$id/logs'
+import { Route as AppServersIdFilesRouteImport } from './routes/_app/servers/$id/files'
 import { Route as AppServersIdConsoleRouteImport } from './routes/_app/servers/$id/console'
 import { Route as AppServersIdBackupsRouteImport } from './routes/_app/servers/$id/backups'
 import { Route as AppServersIdAnalyticsRouteImport } from './routes/_app/servers/$id/analytics'
 import { Route as AppServersIdAlertsRouteImport } from './routes/_app/servers/$id/alerts'
+import { Route as AppServersIdPlayersNameRouteImport } from './routes/_app/servers/$id/players.$name'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -45,6 +48,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const StatusIdRoute = StatusIdRouteImport.update({
+  id: '/status/$id',
+  path: '/status/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppMembersRoute = AppMembersRouteImport.update({
   id: '/members',
   path: '/members',
@@ -59,6 +67,11 @@ const AppServersIdRoute = AppServersIdRouteImport.update({
   id: '/servers/$id',
   path: '/servers/$id',
   getParentRoute: () => AppRoute,
+} as any)
+const AppServersIdWorldsRoute = AppServersIdWorldsRouteImport.update({
+  id: '/worlds',
+  path: '/worlds',
+  getParentRoute: () => AppServersIdRoute,
 } as any)
 const AppServersIdWhitelistRoute = AppServersIdWhitelistRouteImport.update({
   id: '/whitelist',
@@ -90,14 +103,14 @@ const AppServersIdPluginsRoute = AppServersIdPluginsRouteImport.update({
   path: '/plugins',
   getParentRoute: () => AppServersIdRoute,
 } as any)
-const AppServersIdPlayersNameRoute = AppServersIdPlayersNameRouteImport.update({
-  id: '/players/$name',
-  path: '/players/$name',
-  getParentRoute: () => AppServersIdPlayersRoute,
-} as any)
 const AppServersIdPlayersRoute = AppServersIdPlayersRouteImport.update({
   id: '/players',
   path: '/players',
+  getParentRoute: () => AppServersIdRoute,
+} as any)
+const AppServersIdOverviewRoute = AppServersIdOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
   getParentRoute: () => AppServersIdRoute,
 } as any)
 const AppServersIdMapRoute = AppServersIdMapRouteImport.update({
@@ -105,14 +118,14 @@ const AppServersIdMapRoute = AppServersIdMapRouteImport.update({
   path: '/map',
   getParentRoute: () => AppServersIdRoute,
 } as any)
-const AppServersIdFilesRoute = AppServersIdFilesRouteImport.update({
-  id: '/files',
-  path: '/files',
-  getParentRoute: () => AppServersIdRoute,
-} as any)
 const AppServersIdLogsRoute = AppServersIdLogsRouteImport.update({
   id: '/logs',
   path: '/logs',
+  getParentRoute: () => AppServersIdRoute,
+} as any)
+const AppServersIdFilesRoute = AppServersIdFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
   getParentRoute: () => AppServersIdRoute,
 } as any)
 const AppServersIdConsoleRoute = AppServersIdConsoleRouteImport.update({
@@ -135,12 +148,18 @@ const AppServersIdAlertsRoute = AppServersIdAlertsRouteImport.update({
   path: '/alerts',
   getParentRoute: () => AppServersIdRoute,
 } as any)
+const AppServersIdPlayersNameRoute = AppServersIdPlayersNameRouteImport.update({
+  id: '/$name',
+  path: '/$name',
+  getParentRoute: () => AppServersIdPlayersRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/audit': typeof AppAuditRoute
   '/members': typeof AppMembersRoute
+  '/status/$id': typeof StatusIdRoute
   '/servers/$id': typeof AppServersIdRouteWithChildren
   '/servers/$id/alerts': typeof AppServersIdAlertsRoute
   '/servers/$id/analytics': typeof AppServersIdAnalyticsRoute
@@ -149,19 +168,22 @@ export interface FileRoutesByFullPath {
   '/servers/$id/files': typeof AppServersIdFilesRoute
   '/servers/$id/logs': typeof AppServersIdLogsRoute
   '/servers/$id/map': typeof AppServersIdMapRoute
+  '/servers/$id/overview': typeof AppServersIdOverviewRoute
   '/servers/$id/players': typeof AppServersIdPlayersRouteWithChildren
-  '/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
   '/servers/$id/plugins': typeof AppServersIdPluginsRoute
   '/servers/$id/runtime': typeof AppServersIdRuntimeRoute
   '/servers/$id/schedule': typeof AppServersIdScheduleRoute
   '/servers/$id/settings': typeof AppServersIdSettingsRoute
   '/servers/$id/webhooks': typeof AppServersIdWebhooksRoute
   '/servers/$id/whitelist': typeof AppServersIdWhitelistRoute
+  '/servers/$id/worlds': typeof AppServersIdWorldsRoute
+  '/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/audit': typeof AppAuditRoute
   '/members': typeof AppMembersRoute
+  '/status/$id': typeof StatusIdRoute
   '/': typeof AppIndexRoute
   '/servers/$id': typeof AppServersIdRouteWithChildren
   '/servers/$id/alerts': typeof AppServersIdAlertsRoute
@@ -171,14 +193,16 @@ export interface FileRoutesByTo {
   '/servers/$id/files': typeof AppServersIdFilesRoute
   '/servers/$id/logs': typeof AppServersIdLogsRoute
   '/servers/$id/map': typeof AppServersIdMapRoute
+  '/servers/$id/overview': typeof AppServersIdOverviewRoute
   '/servers/$id/players': typeof AppServersIdPlayersRouteWithChildren
-  '/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
   '/servers/$id/plugins': typeof AppServersIdPluginsRoute
   '/servers/$id/runtime': typeof AppServersIdRuntimeRoute
   '/servers/$id/schedule': typeof AppServersIdScheduleRoute
   '/servers/$id/settings': typeof AppServersIdSettingsRoute
   '/servers/$id/webhooks': typeof AppServersIdWebhooksRoute
   '/servers/$id/whitelist': typeof AppServersIdWhitelistRoute
+  '/servers/$id/worlds': typeof AppServersIdWorldsRoute
+  '/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -186,6 +210,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/audit': typeof AppAuditRoute
   '/_app/members': typeof AppMembersRoute
+  '/status/$id': typeof StatusIdRoute
   '/_app/': typeof AppIndexRoute
   '/_app/servers/$id': typeof AppServersIdRouteWithChildren
   '/_app/servers/$id/alerts': typeof AppServersIdAlertsRoute
@@ -195,14 +220,16 @@ export interface FileRoutesById {
   '/_app/servers/$id/files': typeof AppServersIdFilesRoute
   '/_app/servers/$id/logs': typeof AppServersIdLogsRoute
   '/_app/servers/$id/map': typeof AppServersIdMapRoute
+  '/_app/servers/$id/overview': typeof AppServersIdOverviewRoute
   '/_app/servers/$id/players': typeof AppServersIdPlayersRouteWithChildren
-  '/_app/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
   '/_app/servers/$id/plugins': typeof AppServersIdPluginsRoute
   '/_app/servers/$id/runtime': typeof AppServersIdRuntimeRoute
   '/_app/servers/$id/schedule': typeof AppServersIdScheduleRoute
   '/_app/servers/$id/settings': typeof AppServersIdSettingsRoute
   '/_app/servers/$id/webhooks': typeof AppServersIdWebhooksRoute
   '/_app/servers/$id/whitelist': typeof AppServersIdWhitelistRoute
+  '/_app/servers/$id/worlds': typeof AppServersIdWorldsRoute
+  '/_app/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -211,6 +238,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/audit'
     | '/members'
+    | '/status/$id'
     | '/servers/$id'
     | '/servers/$id/alerts'
     | '/servers/$id/analytics'
@@ -219,19 +247,22 @@ export interface FileRouteTypes {
     | '/servers/$id/files'
     | '/servers/$id/logs'
     | '/servers/$id/map'
+    | '/servers/$id/overview'
     | '/servers/$id/players'
-    | '/servers/$id/players/$name'
     | '/servers/$id/plugins'
     | '/servers/$id/runtime'
     | '/servers/$id/schedule'
     | '/servers/$id/settings'
     | '/servers/$id/webhooks'
     | '/servers/$id/whitelist'
+    | '/servers/$id/worlds'
+    | '/servers/$id/players/$name'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/audit'
     | '/members'
+    | '/status/$id'
     | '/'
     | '/servers/$id'
     | '/servers/$id/alerts'
@@ -241,20 +272,23 @@ export interface FileRouteTypes {
     | '/servers/$id/files'
     | '/servers/$id/logs'
     | '/servers/$id/map'
+    | '/servers/$id/overview'
     | '/servers/$id/players'
-    | '/servers/$id/players/$name'
     | '/servers/$id/plugins'
     | '/servers/$id/runtime'
     | '/servers/$id/schedule'
     | '/servers/$id/settings'
     | '/servers/$id/webhooks'
     | '/servers/$id/whitelist'
+    | '/servers/$id/worlds'
+    | '/servers/$id/players/$name'
   id:
     | '__root__'
     | '/_app'
     | '/login'
     | '/_app/audit'
     | '/_app/members'
+    | '/status/$id'
     | '/_app/'
     | '/_app/servers/$id'
     | '/_app/servers/$id/alerts'
@@ -264,19 +298,22 @@ export interface FileRouteTypes {
     | '/_app/servers/$id/files'
     | '/_app/servers/$id/logs'
     | '/_app/servers/$id/map'
+    | '/_app/servers/$id/overview'
     | '/_app/servers/$id/players'
-    | '/_app/servers/$id/players/$name'
     | '/_app/servers/$id/plugins'
     | '/_app/servers/$id/runtime'
     | '/_app/servers/$id/schedule'
     | '/_app/servers/$id/settings'
     | '/_app/servers/$id/webhooks'
     | '/_app/servers/$id/whitelist'
+    | '/_app/servers/$id/worlds'
+    | '/_app/servers/$id/players/$name'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  StatusIdRoute: typeof StatusIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -302,6 +339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/status/$id': {
+      id: '/status/$id'
+      path: '/status/$id'
+      fullPath: '/status/$id'
+      preLoaderRoute: typeof StatusIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/members': {
       id: '/_app/members'
       path: '/members'
@@ -322,6 +366,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/servers/$id'
       preLoaderRoute: typeof AppServersIdRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/servers/$id/worlds': {
+      id: '/_app/servers/$id/worlds'
+      path: '/worlds'
+      fullPath: '/servers/$id/worlds'
+      preLoaderRoute: typeof AppServersIdWorldsRouteImport
+      parentRoute: typeof AppServersIdRoute
     }
     '/_app/servers/$id/whitelist': {
       id: '/_app/servers/$id/whitelist'
@@ -372,12 +423,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppServersIdPlayersRouteImport
       parentRoute: typeof AppServersIdRoute
     }
-    '/_app/servers/$id/players/$name': {
-      id: '/_app/servers/$id/players/$name'
-      path: '/players/$name'
-      fullPath: '/servers/$id/players/$name'
-      preLoaderRoute: typeof AppServersIdPlayersNameRouteImport
-      parentRoute: typeof AppServersIdPlayersRoute
+    '/_app/servers/$id/overview': {
+      id: '/_app/servers/$id/overview'
+      path: '/overview'
+      fullPath: '/servers/$id/overview'
+      preLoaderRoute: typeof AppServersIdOverviewRouteImport
+      parentRoute: typeof AppServersIdRoute
     }
     '/_app/servers/$id/map': {
       id: '/_app/servers/$id/map'
@@ -386,18 +437,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppServersIdMapRouteImport
       parentRoute: typeof AppServersIdRoute
     }
-    '/_app/servers/$id/files': {
-      id: '/_app/servers/$id/files'
-      path: '/files'
-      fullPath: '/servers/$id/files'
-      preLoaderRoute: typeof AppServersIdFilesRouteImport
-      parentRoute: typeof AppServersIdRoute
-    }
     '/_app/servers/$id/logs': {
       id: '/_app/servers/$id/logs'
       path: '/logs'
       fullPath: '/servers/$id/logs'
       preLoaderRoute: typeof AppServersIdLogsRouteImport
+      parentRoute: typeof AppServersIdRoute
+    }
+    '/_app/servers/$id/files': {
+      id: '/_app/servers/$id/files'
+      path: '/files'
+      fullPath: '/servers/$id/files'
+      preLoaderRoute: typeof AppServersIdFilesRouteImport
       parentRoute: typeof AppServersIdRoute
     }
     '/_app/servers/$id/console': {
@@ -428,6 +479,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppServersIdAlertsRouteImport
       parentRoute: typeof AppServersIdRoute
     }
+    '/_app/servers/$id/players/$name': {
+      id: '/_app/servers/$id/players/$name'
+      path: '/$name'
+      fullPath: '/servers/$id/players/$name'
+      preLoaderRoute: typeof AppServersIdPlayersNameRouteImport
+      parentRoute: typeof AppServersIdPlayersRoute
+    }
   }
 }
 
@@ -439,9 +497,8 @@ const AppServersIdPlayersRouteChildren: AppServersIdPlayersRouteChildren = {
   AppServersIdPlayersNameRoute: AppServersIdPlayersNameRoute,
 }
 
-const AppServersIdPlayersRouteWithChildren = AppServersIdPlayersRoute._addFileChildren(
-  AppServersIdPlayersRouteChildren,
-)
+const AppServersIdPlayersRouteWithChildren =
+  AppServersIdPlayersRoute._addFileChildren(AppServersIdPlayersRouteChildren)
 
 interface AppServersIdRouteChildren {
   AppServersIdAlertsRoute: typeof AppServersIdAlertsRoute
@@ -451,6 +508,7 @@ interface AppServersIdRouteChildren {
   AppServersIdFilesRoute: typeof AppServersIdFilesRoute
   AppServersIdLogsRoute: typeof AppServersIdLogsRoute
   AppServersIdMapRoute: typeof AppServersIdMapRoute
+  AppServersIdOverviewRoute: typeof AppServersIdOverviewRoute
   AppServersIdPlayersRoute: typeof AppServersIdPlayersRouteWithChildren
   AppServersIdPluginsRoute: typeof AppServersIdPluginsRoute
   AppServersIdRuntimeRoute: typeof AppServersIdRuntimeRoute
@@ -458,6 +516,7 @@ interface AppServersIdRouteChildren {
   AppServersIdSettingsRoute: typeof AppServersIdSettingsRoute
   AppServersIdWebhooksRoute: typeof AppServersIdWebhooksRoute
   AppServersIdWhitelistRoute: typeof AppServersIdWhitelistRoute
+  AppServersIdWorldsRoute: typeof AppServersIdWorldsRoute
 }
 
 const AppServersIdRouteChildren: AppServersIdRouteChildren = {
@@ -468,6 +527,7 @@ const AppServersIdRouteChildren: AppServersIdRouteChildren = {
   AppServersIdFilesRoute: AppServersIdFilesRoute,
   AppServersIdLogsRoute: AppServersIdLogsRoute,
   AppServersIdMapRoute: AppServersIdMapRoute,
+  AppServersIdOverviewRoute: AppServersIdOverviewRoute,
   AppServersIdPlayersRoute: AppServersIdPlayersRouteWithChildren,
   AppServersIdPluginsRoute: AppServersIdPluginsRoute,
   AppServersIdRuntimeRoute: AppServersIdRuntimeRoute,
@@ -475,6 +535,7 @@ const AppServersIdRouteChildren: AppServersIdRouteChildren = {
   AppServersIdSettingsRoute: AppServersIdSettingsRoute,
   AppServersIdWebhooksRoute: AppServersIdWebhooksRoute,
   AppServersIdWhitelistRoute: AppServersIdWhitelistRoute,
+  AppServersIdWorldsRoute: AppServersIdWorldsRoute,
 }
 
 const AppServersIdRouteWithChildren = AppServersIdRoute._addFileChildren(
@@ -500,6 +561,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  StatusIdRoute: StatusIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

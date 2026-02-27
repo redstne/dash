@@ -154,10 +154,15 @@ export abstract class PlayerService {
           if (posM) lastLoginPos = [parseFloat(posM[1]!), parseFloat(posM[2]!), parseFloat(posM[3]!)];
           if (/joined the game|left the game/.test(line)) lastSeen = line;
         }
+        const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
         recentActivity = matchingLines.filter((l) =>
           /joined the game|left the game|issued server command|<.+?>/.test(l)
         // eslint-disable-next-line no-control-regex
-        ).slice(-10).map((l) => l.replace(/\u001b\[[0-9;]*m/g, "").trim());
+        ).slice(-10).map((l) => {
+          const cleaned = l.replace(/\u001b\[[0-9;]*m/g, "").trim();
+          // Inject date into [HH:MM:SS] → [YYYY-MM-DD HH:MM:SS]
+          return cleaned.replace(/^\[(\d{2}:\d{2}:\d{2})\]/, `[${today} $1]`);
+        });
       } catch { /* log file may not exist */ }
     }
 

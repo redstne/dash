@@ -1,6 +1,7 @@
 import Elysia, { t } from "elysia";
 import { authPlugin, requireRole } from "../../plugins/rbac.ts";
 import { readdir } from "node:fs/promises";
+import { mkdirSync, renameSync, existsSync, symlinkSync, unlinkSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { db, schema } from "../../db/index.ts";
 import { eq } from "drizzle-orm";
@@ -104,13 +105,13 @@ async function getFabricMcVersions(): Promise<string[]> {
 
 async function getFabricLoaders(mcVersion: string): Promise<{ loaders: string[]; installers: string[] }> {
   const [loaders, installers] = await Promise.all([
-    fetchJson<Array<{ loader: { version: string }; stable: boolean }>>(
+    fetchJson<Array<{ loader: { version: string; stable: boolean } }>>(
       `https://meta.fabricmc.net/v2/versions/loader/${encodeURIComponent(mcVersion)}`
     ),
     fetchJson<Array<{ version: string; stable: boolean }>>("https://meta.fabricmc.net/v2/versions/installer"),
   ]);
   return {
-    loaders: loaders.filter((l) => l.stable).map((l) => l.loader.version),
+    loaders: loaders.filter((l) => l.loader.stable).map((l) => l.loader.version),
     installers: installers.filter((i) => i.stable).map((i) => i.version),
   };
 }
@@ -241,7 +242,49 @@ export const runtimeRoute = new Elysia({ prefix: "/api/servers" })
       }
       const res = await fetch(url, { headers: { "Accept": "application/octet-stream" } });
       if (!res.ok) return status(502, `Download failed: ${res.status}`);
+
+      // Move any existing runtime JARs to _old_jar/ before installing
+      const oldJarDir = path.join(root, "_old_jar");
+      try {
+        const existing = await readdir(root);
+        const otherJars = existing.filter((f) => {
+          if (!f.endsWith(".jar")) return false;
+          if (f === filename) return false; // same name — will be overwritten
+          return RUNTIME_PATTERNS.some(({ pattern }) => pattern.test(f)) || f === "server.jar";
+        });
+        if (otherJars.length > 0) {
+          mkdirSync(oldJarDir, { recursive: true });
+          for (const jar of otherJars) {
+            const src = path.join(root, jar);
+            const dst = path.join(oldJarDir, jar);
+            // If a file with the same name already exists in _old_jar, suffix with timestamp
+            renameSync(src, existsSync(dst) ? path.join(oldJarDir, `${Date.now()}_${jar}`) : dst);
+          }
+        }
+      } catch { /* non-fatal — still proceed with install */ }
+
       await Bun.write(dest, res);
+
+      // ── Point server.jar at the new JAR ──────────────────────────────
+      // Most startup scripts use "java -jar server.jar". We (re)create a
+      // symlink so the active JAR is always whatever was last installed.
+      const serverJarPath = path.join(root, "server.jar");
+      try {
+        if (existsSync(serverJarPath)) unlinkSync(serverJarPath);
+        symlinkSync(filename, serverJarPath);
+      } catch { /* non-fatal if symlinks aren't supported on this FS */ }
+
+      // ── Patch start.sh if it references an old JAR by name ───────────
+      const startSh = path.join(root, "start.sh");
+      try {
+        if (existsSync(startSh)) {
+          const content = readFileSync(startSh, "utf8");
+          // Replace any "-jar <something>.jar" that isn't already the new filename
+          const patched = content.replace(/-jar\s+[^\s]+\.jar/g, `-jar ${filename}`);
+          if (patched !== content) writeFileSync(startSh, patched, "utf8");
+        }
+      } catch { /* non-fatal */ }
+
       await audit({
         userId: session.user.id,
         action: "runtime.install",

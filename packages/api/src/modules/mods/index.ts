@@ -1,23 +1,29 @@
 import Elysia, { t } from "elysia";
 import { authPlugin, requireRole } from "../../plugins/rbac.ts";
-import { rename, unlink, readdir, stat } from "node:fs/promises";
+import { rename, unlink, readdir, stat, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { db, schema } from "../../db/index.ts";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { audit } from "../../lib/audit.ts";
+import { nanoid } from "nanoid";
 
 const SAFE_ID = /^[a-zA-Z0-9_-]+$/;
 // Allow common chars in Modrinth filenames: alphanumeric, dash, dot, underscore, plus, brackets, parens, @, comma, space
 const SAFE_FILENAME = /^[a-zA-Z0-9_\-.+[\]()@,% ]+\.jar(\.disabled)?$/;
-const MODRINTH_CDN_PREFIXES = [
+// Trusted download sources (Modrinth, Hangar, SpigotMC, GitHub, BukkitDev, direct URLs we allow)
+const TRUSTED_URL_PREFIXES = [
   "https://cdn.modrinth.com/",
   "https://cdn-raw.modrinth.com/",
+  "https://hangar.papermc.io/",
+  "https://github.com/",
+  "https://dev.bukkit.org/",
+  "https://api.spiget.org/",
 ];
 // For "bukkit" (Paper/Spigot/Bukkit/Purpur servers), also include all compatible loader tags
 const BUKKIT_LOADERS = ["bukkit", "paper", "spigot", "purpur", "folia"];
 const MODRINTH_API = "https://api.modrinth.com/v2";
-const MODRINTH_UA = "redstnkit/dash (https://github.com/redstnkit/dash)";
+const MODRINTH_UA = "redstne/dash (https://github.com/redstne/dash)";
 
 function deriveServerRoot(logPath: string): string {
   const parts = logPath.split("/");
@@ -43,14 +49,14 @@ function safeModPath(dir: string, filename: string): string {
   return resolved;
 }
 
-async function getServerLogPath(serverId: string): Promise<string | null> {
-  if (!SAFE_ID.test(serverId)) throw new Error("Invalid server ID");
+async function getServer(serverId: string): Promise<{ logPath: string | null } | null> {
+  if (!SAFE_ID.test(serverId)) return null;
   const [server] = await db
     .select({ logPath: schema.servers.logPath })
     .from(schema.servers)
     .where(eq(schema.servers.id, serverId))
     .limit(1);
-  return server?.logPath ?? null;
+  return server ?? null;
 }
 
 function parseJarName(filename: string): { name: string; version: string } {
@@ -60,15 +66,41 @@ function parseJarName(filename: string): { name: string; version: string } {
   return { name: base, version: "" };
 }
 
+/** Write PLUGINS_FILE (itzg-compatible URL list) to server root */
+async function regenerateManifest(serverId: string, serverRoot: string): Promise<void> {
+  const plugins = await db
+    .select({ downloadUrl: schema.serverPlugins.downloadUrl, name: schema.serverPlugins.name })
+    .from(schema.serverPlugins)
+    .where(eq(schema.serverPlugins.serverId, serverId));
+
+  const lines = plugins
+    .filter((p) => p.downloadUrl)
+    .map((p) => `# ${p.name}\n${p.downloadUrl}`)
+    .join("\n\n");
+
+  const manifestPath = path.join(serverRoot, "redstne-plugins.txt");
+  await writeFile(manifestPath, lines + "\n", "utf-8");
+}
+
 export const modsRoute = new Elysia({ prefix: "/api/servers" })
   .use(authPlugin)
 
-  // ── List mods/plugins (includes .jar.disabled) ────────────────────────
+  // ── List mods/plugins (filesystem + DB metadata) ──────────────────────
   .get("/:id/mods", async ({ params, session, status }) => {
     if (!session?.user) return status(401, "Unauthorized");
-    const logPath = await getServerLogPath(params.id);
-    const { type, dir } = deriveModsDir(logPath);
+    const server = await getServer(params.id);
+    if (!server) return status(404, "Server not found");
+    const { type, dir } = deriveModsDir(server.logPath);
     if (type === "none") return { type, items: [] };
+
+    // Get DB records for metadata enrichment
+    const dbPlugins = await db
+      .select()
+      .from(schema.serverPlugins)
+      .where(eq(schema.serverPlugins.serverId, params.id));
+    const byFilename = new Map(dbPlugins.map((p) => [p.filename, p]));
+    const byFilenameDisabled = new Map(dbPlugins.map((p) => [p.filename + ".disabled", p]));
+
     const files = await readdir(dir);
     const items = await Promise.all(
       files
@@ -76,10 +108,14 @@ export const modsRoute = new Elysia({ prefix: "/api/servers" })
         .map(async (filename) => {
           const s = await stat(path.join(dir, filename));
           const parsed = parseJarName(filename);
+          const dbRecord = byFilename.get(filename) ?? byFilenameDisabled.get(filename);
           return {
             filename,
-            name: parsed.name,
-            version: parsed.version,
+            name: dbRecord?.name ?? parsed.name,
+            version: dbRecord?.version ?? parsed.version,
+            slug: dbRecord?.slug ?? null,
+            source: dbRecord?.source ?? "filesystem",
+            downloadUrl: dbRecord?.downloadUrl ?? null,
             enabled: filename.endsWith(".jar"),
             size: s.size,
             modifiedAt: s.mtime.toISOString(),
@@ -95,13 +131,11 @@ export const modsRoute = new Elysia({ prefix: "/api/servers" })
     "/:id/mods/search",
     async ({ params, query, session, status }) => {
       if (!session?.user) return status(401, "Unauthorized");
-      // Validate server exists
-      const logPath = await getServerLogPath(params.id);
-      if (logPath === null && !SAFE_ID.test(params.id)) return status(404, "Server not found");
+      const server = await getServer(params.id);
+      if (!server) return status(404, "Server not found");
       const { q = "", loader, mcVersion } = query;
       const facets: string[][] = [["project_type:mod", "project_type:plugin"]];
       if (loader) {
-        // Expand bukkit to all compatible Paper/Spigot/Purpur/Folia loaders (OR group)
         const loaders = loader === "bukkit" ? BUKKIT_LOADERS : [loader];
         facets.push(loaders.map((l) => `categories:${l}`));
       }
@@ -124,7 +158,6 @@ export const modsRoute = new Elysia({ prefix: "/api/servers" })
       const { loader, mcVersion } = query;
       const qs = new URLSearchParams();
       if (loader) {
-        // Expand bukkit to all compatible loaders so Paper-only plugins show their versions
         const loaders = loader === "bukkit" ? BUKKIT_LOADERS : [loader];
         qs.set("loaders", JSON.stringify(loaders));
       }
@@ -138,6 +171,16 @@ export const modsRoute = new Elysia({ prefix: "/api/servers" })
     { query: t.Object({ loader: t.Optional(t.String()), mcVersion: t.Optional(t.String()) }) }
   )
 
+  // ── Get manifest (PLUGINS_FILE content) ───────────────────────────────
+  .get("/:id/mods/manifest", async ({ params, session, status }) => {
+    if (!session?.user) return status(401, "Unauthorized");
+    const plugins = await db
+      .select()
+      .from(schema.serverPlugins)
+      .where(eq(schema.serverPlugins.serverId, params.id));
+    return { plugins };
+  })
+
   .use(requireRole("operator"))
 
   // ── Toggle enable / disable ───────────────────────────────────────────
@@ -145,8 +188,9 @@ export const modsRoute = new Elysia({ prefix: "/api/servers" })
     "/:id/mods/:filename/toggle",
     async ({ params, session, request, status }) => {
       if (!session?.user) return status(401, "Unauthorized");
-      const logPath = await getServerLogPath(params.id);
-      const { type, dir } = deriveModsDir(logPath);
+      const server = await getServer(params.id);
+      if (!server) return status(404, "Server not found");
+      const { type, dir } = deriveModsDir(server.logPath);
       if (type === "none") return status(404, "Mods directory not found");
       let oldPath: string;
       try { oldPath = safeModPath(dir, params.filename); }
@@ -182,13 +226,25 @@ export const modsRoute = new Elysia({ prefix: "/api/servers" })
     "/:id/mods/:filename",
     async ({ params, session, request, status }) => {
       if (!session?.user) return status(401, "Unauthorized");
-      const logPath = await getServerLogPath(params.id);
-      const { type, dir } = deriveModsDir(logPath);
+      const server = await getServer(params.id);
+      if (!server) return status(404, "Server not found");
+      const { type, dir } = deriveModsDir(server.logPath);
       if (type === "none") return status(404, "Mods directory not found");
       let filePath: string;
       try { filePath = safeModPath(dir, params.filename); }
       catch { return status(400, "Invalid filename"); }
       await unlink(filePath);
+      // Remove from DB by filename (either enabled or disabled)
+      await db.delete(schema.serverPlugins).where(
+        and(
+          eq(schema.serverPlugins.serverId, params.id),
+          eq(schema.serverPlugins.filename, params.filename.replace(/\.disabled$/, ""))
+        )
+      );
+      // Regenerate manifest
+      if (server.logPath) {
+        try { await regenerateManifest(params.id, deriveServerRoot(server.logPath)); } catch { /* best effort */ }
+      }
       await audit({
         userId: session.user.id,
         action: "mod.delete",
@@ -202,35 +258,110 @@ export const modsRoute = new Elysia({ prefix: "/api/servers" })
     { params: t.Object({ id: t.String(), filename: t.String() }) }
   )
 
-  // ── Install from Modrinth (download by URL + filename) ────────────────
+  // ── Install from Modrinth CDN ─────────────────────────────────────────
   .post(
     "/:id/mods/install",
     async ({ params, body, session, request, status }) => {
       if (!session?.user) return status(401, "Unauthorized");
-      const { url, filename } = body;
-      const trusted = MODRINTH_CDN_PREFIXES.some((p) => url.startsWith(p));
-      if (!trusted) return status(400, "URL must be from Modrinth CDN");
+      const { url, filename, name, version, slug } = body;
+      const trusted = TRUSTED_URL_PREFIXES.some((p) => url.startsWith(p));
+      if (!trusted) return status(400, "URL must be from a trusted source (Modrinth, Hangar, GitHub, SpigotMC)");
       if (!SAFE_FILENAME.test(filename) || !filename.endsWith(".jar")) {
         return status(400, "Invalid filename");
       }
-      const logPath = await getServerLogPath(params.id);
-      const { type, dir } = deriveModsDir(logPath);
+      const server = await getServer(params.id);
+      if (!server) return status(404, "Server not found");
+      const { type, dir } = deriveModsDir(server.logPath);
       if (type === "none") return status(404, "Mods directory not found");
-      // Verify the resolved path stays within the mods/plugins directory
       const dest = path.resolve(dir, filename);
       if (path.dirname(dest) !== dir) return status(400, "Invalid filename");
       const res = await fetch(url);
-      if (!res.ok) return status(502, `Download from Modrinth failed (${res.status})`);
+      if (!res.ok) return status(502, `Download failed (${res.status})`);
       await Bun.write(dest, res);
+      // Upsert DB record
+      const existing = await db.select({ id: schema.serverPlugins.id })
+        .from(schema.serverPlugins)
+        .where(and(eq(schema.serverPlugins.serverId, params.id), eq(schema.serverPlugins.filename, filename)))
+        .limit(1);
+      const source = url.includes("modrinth.com") ? "modrinth" : "url";
+      if (existing.length > 0) {
+        await db.update(schema.serverPlugins)
+          .set({ downloadUrl: url, name: name ?? filename.replace(/\.jar$/, ""), version: version ?? null, slug: slug ?? null, source })
+          .where(eq(schema.serverPlugins.id, existing[0]!.id));
+      } else {
+        await db.insert(schema.serverPlugins).values({
+          id: nanoid(),
+          serverId: params.id,
+          name: name ?? filename.replace(/\.jar$/, ""),
+          slug: slug ?? null,
+          version: version ?? null,
+          downloadUrl: url,
+          filename,
+          source,
+        });
+      }
+      // Regenerate manifest for itzg PLUGINS_FILE
+      if (server.logPath) {
+        try { await regenerateManifest(params.id, deriveServerRoot(server.logPath)); } catch { /* best effort */ }
+      }
       await audit({
         userId: session.user.id,
         action: "mod.install",
         resource: "mod",
         resourceId: params.id,
-        metadata: { filename, url },
+        metadata: { filename, url, source },
         ip: request.headers.get("x-forwarded-for") ?? undefined,
       });
       return { success: true, filename };
     },
-    { body: t.Object({ url: t.String(), filename: t.String() }) }
+    { body: t.Object({ url: t.String(), filename: t.String(), name: t.Optional(t.String()), version: t.Optional(t.String()), slug: t.Optional(t.String()) }) }
+  )
+
+  // ── Install from direct URL (any trusted or user-confirmed URL) ───────
+  .post(
+    "/:id/mods/install-url",
+    async ({ params, body, session, request, status }) => {
+      if (!session?.user) return status(401, "Unauthorized");
+      const { url, name } = body;
+      if (!url.startsWith("https://")) return status(400, "URL must use HTTPS");
+      const server = await getServer(params.id);
+      if (!server) return status(404, "Server not found");
+      const { type, dir } = deriveModsDir(server.logPath);
+      if (type === "none") return status(404, "Mods directory not found");
+      // Derive filename from URL
+      const rawFilename = decodeURIComponent(url.split("/").pop()?.split("?")[0] ?? "");
+      const filename = rawFilename.endsWith(".jar") ? rawFilename : (name ?? "plugin") + ".jar";
+      if (!SAFE_FILENAME.test(filename)) return status(400, "Could not determine a safe filename from URL");
+      const dest = path.resolve(dir, filename);
+      if (path.dirname(dest) !== dir) return status(400, "Invalid filename");
+      const res = await fetch(url, { headers: { "User-Agent": MODRINTH_UA } });
+      if (!res.ok) return status(502, `Download failed (${res.status})`);
+      await Bun.write(dest, res);
+      // Record in DB
+      const existing = await db.select({ id: schema.serverPlugins.id })
+        .from(schema.serverPlugins)
+        .where(and(eq(schema.serverPlugins.serverId, params.id), eq(schema.serverPlugins.filename, filename)))
+        .limit(1);
+      if (existing.length > 0) {
+        await db.update(schema.serverPlugins).set({ downloadUrl: url, name: name ?? filename.replace(/\.jar$/, "") })
+          .where(eq(schema.serverPlugins.id, existing[0]!.id));
+      } else {
+        await db.insert(schema.serverPlugins).values({
+          id: nanoid(), serverId: params.id,
+          name: name ?? filename.replace(/\.jar$/, ""),
+          slug: null, version: null, downloadUrl: url, filename, source: "url",
+        });
+      }
+      if (server.logPath) {
+        try { await regenerateManifest(params.id, deriveServerRoot(server.logPath)); } catch { /* best effort */ }
+      }
+      await audit({
+        userId: session.user.id, action: "mod.install", resource: "mod", resourceId: params.id,
+        metadata: { filename, url, source: "url" },
+        ip: request.headers.get("x-forwarded-for") ?? undefined,
+      });
+      return { success: true, filename };
+    },
+    { body: t.Object({ url: t.String(), name: t.Optional(t.String()) }) }
   );
+

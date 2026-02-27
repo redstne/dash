@@ -1,3 +1,4 @@
+import "../lib/secrets.ts";
 import { db, schema } from "./index.ts";
 import { seed, seedServers } from "./seed.ts";
 import path from "node:path";
@@ -30,7 +31,7 @@ for (const entry of journal.entries) {
     } catch (e: unknown) {
       const msg = (e as Error)?.message ?? "";
       if (msg.includes("already exists") || msg.includes("duplicate column name")) {
-        console.warn(`[migrate] skip (${msg.split("\n")[0]})`);
+      process.stdout.write(JSON.stringify({ ts: new Date().toISOString(), level: "warn", msg: `migrate skip: ${msg.split("\n")[0]}` }) + "\n");
         continue;
       }
       throw e;
@@ -38,10 +39,10 @@ for (const entry of journal.entries) {
   }
 
   db.$client.prepare("INSERT OR IGNORE INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)").run(tag, Date.now());
-  console.log(`[migrate] ✅ ${tag}`);
+  process.stdout.write(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: `migrate applied: ${tag}` }) + "\n");
 }
 
-console.log("✅ Migrations done");
+process.stdout.write(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: "migrations done" }) + "\n");
 
 await seed();
 await seedServers();
@@ -56,7 +57,7 @@ if (mcLogPath) {
       .from(schema.servers);
     if (!row?.logPath) {
       await db.update(schema.servers).set({ logPath: mcLogPath });
-      console.log(`[seed] 🗂  Applied MC_LOG_PATH fallback: ${mcLogPath}`);
+      process.stdout.write(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: `seed MC_LOG_PATH applied: ${mcLogPath}` }) + "\n");
     }
   }
 }

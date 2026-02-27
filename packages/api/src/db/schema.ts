@@ -188,3 +188,35 @@ export const webhooks = sqliteTable("webhooks", {
 
 export type ScheduledTask = typeof scheduledTasks.$inferSelect;
 export type Webhook = typeof webhooks.$inferSelect;
+
+// ── Player Sessions ────────────────────────────────────────────────────────
+export const playerSessions = sqliteTable("player_sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  serverId: text("server_id").notNull().references(() => servers.id, { onDelete: "cascade" }),
+  playerName: text("player_name").notNull(),
+  joinedAt: integer("joined_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  leftAt: integer("left_at", { mode: "timestamp" }),
+});
+export type PlayerSession = typeof playerSessions.$inferSelect;
+
+// ── Server Plugins ─────────────────────────────────────────────────────────
+export const serverPlugins = sqliteTable("server_plugins", {
+  id: text("id").primaryKey(),
+  serverId: text("server_id").notNull().references(() => servers.id, { onDelete: "cascade" }),
+  /** Display name */
+  name: text("name").notNull(),
+  /** Modrinth project slug or null */
+  slug: text("slug"),
+  /** Version string */
+  version: text("version"),
+  /** Direct download URL (used to generate PLUGINS_FILE for itzg container) */
+  downloadUrl: text("download_url").notNull(),
+  /** Installed filename on disk */
+  filename: text("filename").notNull(),
+  /** "modrinth" | "url" | "filesystem" */
+  source: text("source").notNull().default("url"),
+  installedAt: integer("installed_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type ServerPlugin = typeof serverPlugins.$inferSelect;
