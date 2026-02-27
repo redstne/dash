@@ -4,6 +4,8 @@ import { db, schema } from "../../db/index.ts";
 import { eq } from "drizzle-orm";
 import { audit } from "../../lib/audit.ts";
 import { sendCommand } from "../../lib/rcon.ts";
+import { readFileSync, existsSync } from "node:fs";
+import { ServerService } from "../servers/service.ts";
 
 const PLAYER_NAME_RE = /^\w{1,16}$/;
 
@@ -22,18 +24,23 @@ export const whitelistRoute = new Elysia({ prefix: "/api/servers/:id/whitelist" 
   .get("/", async ({ params, session, status }) => {
     if (!session?.user) return status(401, "Unauthorized");
     const [server] = await db
-      .select({ id: schema.servers.id })
+      .select({ id: schema.servers.id, logPath: schema.servers.logPath })
       .from(schema.servers)
       .where(eq(schema.servers.id, params.id))
       .limit(1);
     if (!server) return status(404, "Server not found");
     try {
-      const [listOut, statusOut] = await Promise.all([
-        sendCommand(params.id, "whitelist list"),
-        sendCommand(params.id, "whitelist query"),
-      ]);
+      const listOut = await sendCommand(params.id, "whitelist list");
       const players = parseWhitelistOutput(listOut);
-      const enabled = !statusOut.toLowerCase().includes("off");
+
+      // Read white-list status from server.properties (whitelist query is not a valid MC command)
+      let enabled = false;
+      const propsPath = ServerService.derivePropertiesPath(server.logPath);
+      if (propsPath && existsSync(propsPath)) {
+        const props = ServerService.parseProperties(readFileSync(propsPath, "utf-8"));
+        enabled = props["white-list"] === "true";
+      }
+
       return { enabled, players };
     } catch {
       return status(502, "Could not reach server via RCON");
