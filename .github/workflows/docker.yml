@@ -12,7 +12,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: redstnkit/dash
+  IMAGE_NAME: redstne/dash
 
 jobs:
   build-and-push:
