@@ -130,6 +130,33 @@ export const app = new Elysia()
   .use(logsTailRoute)
   .use(playersManagementRoute)
   .use(worldsRoute)
+  // ── Setup endpoint (first-run admin registration) ────────────────────────
+  .get("/api/setup", async () => {
+    const [existing] = await db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.role, "admin"))
+      .limit(1);
+    return { needsSetup: !existing };
+  })
+  .post(
+    "/api/setup",
+    async ({ body, status: setStatus }) => {
+      const [existing] = await db
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(eq(schema.users.role, "admin"))
+        .limit(1);
+      if (existing) return setStatus(403, { error: "Setup already completed" });
+
+      const { name, email, password } = body as { name: string; email: string; password: string };
+      const res = await auth.api.signUpEmail({ body: { name, email, password } });
+      if (!res?.user?.id) return setStatus(500, { error: "Failed to create admin user" });
+
+      await db.update(schema.users).set({ role: "admin" }).where(eq(schema.users.id, res.user.id));
+      return { ok: true };
+    }
+  )
   // ── Public status endpoint (no auth) ──────────────────────────────────────
   .get("/api/public/:serverId/status", async ({ params }) => {
     const [server] = await db

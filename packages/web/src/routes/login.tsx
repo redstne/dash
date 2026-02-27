@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useSignIn, useSession } from "@/hooks/useSession.ts";
+import { useSignIn, useSession, useSetup, useRegisterAdmin } from "@/hooks/useSession.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card.tsx";
@@ -13,20 +13,34 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const { data: session } = useSession();
+  const { data: setupData } = useSetup();
   const signIn = useSignIn();
+  const registerAdmin = useRegisterAdmin();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
 
   if (session?.user) {
     void navigate({ to: "/" });
     return null;
   }
 
+  const needsSetup = setupData?.needsSetup ?? false;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await signIn.mutateAsync({ email, password });
+    if (needsSetup) {
+      await registerAdmin.mutateAsync({ name, email, password });
+      await signIn.mutateAsync({ email, password });
+    } else {
+      await signIn.mutateAsync({ email, password });
+    }
     void navigate({ to: "/" });
   }
+
+  const isPending = signIn.isPending || registerAdmin.isPending;
+  const error = registerAdmin.error ?? signIn.error;
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
@@ -64,13 +78,28 @@ function LoginPage() {
               redstne.dash
             </CardTitle>
             <CardDescription className="text-sm mt-2">
-              Minecraft Server Management Platform
+              {needsSetup ? "Create your admin account to get started" : "Minecraft Server Management Platform"}
             </CardDescription>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-6">
           <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4">
+            {needsSetup && (
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-medium">Name</label>
+                <Input
+                  id="name"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Admin"
+                  className="bg-black/30 border-red-600/30 focus-visible:ring-red-600 h-10"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">Email</label>
               <Input
@@ -89,30 +118,30 @@ function LoginPage() {
               <Input
                 id="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete={needsSetup ? "new-password" : "current-password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder={needsSetup ? "Choose a strong password" : "Enter your password"}
                 className="bg-black/30 border-red-600/30 focus-visible:ring-red-600 h-10"
               />
             </div>
-            {signIn.error && (
-              <p className="text-sm text-destructive">{signIn.error.message}</p>
+            {error && (
+              <p className="text-sm text-destructive">{error.message}</p>
             )}
             <Button
               type="submit"
               className="w-full bg-red-600 hover:bg-red-700 h-10 group"
-              disabled={signIn.isPending}
+              disabled={isPending}
             >
-              {signIn.isPending ? (
+              {isPending ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Connecting...</span>
+                  <span>{needsSetup ? "Creating account..." : "Connecting..."}</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span>Access Dashboard</span>
+                  <span>{needsSetup ? "Create Admin Account" : "Access Dashboard"}</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               )}

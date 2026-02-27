@@ -59,10 +59,11 @@ export async function seed() {
     return;
   }
 
-  const email = readEnvOrFile("REDSTNE_ADMIN_EMAIL", "REDSTNE_ADMIN_EMAIL_FILE") ?? "admin@localhost";
-  const password = readEnvOrFile("REDSTNE_ADMIN_PASSWORD", "REDSTNE_ADMIN_PASSWORD_FILE") ?? randomPassword();
+  const email = readEnvOrFile("REDSTNE_ADMIN_EMAIL", "REDSTNE_ADMIN_EMAIL_FILE");
+  const password = readEnvOrFile("REDSTNE_ADMIN_PASSWORD", "REDSTNE_ADMIN_PASSWORD_FILE");
   const name = process.env["REDSTNE_ADMIN_NAME"] ?? "Admin";
 
+  // No env vars — first-run setup will be handled via the /api/setup endpoint
   if (!email || !password) return;
 
   if (password.length < 12) {

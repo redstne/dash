@@ -36,6 +36,39 @@ export function useSignIn() {
   });
 }
 
+export function useSetup() {
+  return useQuery({
+    queryKey: ["setup"],
+    queryFn: async () => {
+      const res = await fetch("/api/setup");
+      return res.json() as Promise<{ needsSetup: boolean }>;
+    },
+    staleTime: Infinity,
+  });
+}
+
+export function useRegisterAdmin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { name: string; email: string; password: string }) => {
+      const res = await fetch("/api/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error ?? "Registration failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["setup"] });
+      qc.invalidateQueries({ queryKey: ["session"] });
+    },
+  });
+}
+
 export function useSignOut() {
   const qc = useQueryClient();
   return useMutation({
