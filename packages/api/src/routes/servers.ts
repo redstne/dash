@@ -262,7 +262,49 @@ export const serversRoute = new Elysia({ prefix: "/api/servers" })
     if (!session?.user) return status(401, "Unauthorized");
     return getServerStatus(params.id);
   })
-  // Kick a player (operator+)
+  // Historical player list (unique names seen in logs)
+  .get("/:id/players/history", async ({ params, session, status }) => {
+    if (!session?.user) return status(401, "Unauthorized");
+    const [server] = await db
+      .select({ logPath: schema.servers.logPath })
+      .from(schema.servers)
+      .where(eq(schema.servers.id, params.id))
+      .limit(1);
+    if (!server) return status(404, "Server not found");
+    if (!server.logPath) return { players: [] };
+
+    const logsDir = path.dirname(server.logPath);
+    const players = new Set<string>();
+    const JOIN_RE = /\[Server thread\/INFO\]: (.+?) joined the game/;
+
+    // Read latest.log
+    try {
+      if (existsSync(server.logPath)) {
+        for (const line of readFileSync(server.logPath, "utf8").split("\n")) {
+          const m = JOIN_RE.exec(line);
+          if (m?.[1]) players.add(m[1].trim());
+        }
+      }
+    } catch {}
+
+    // Also read uncompressed archived logs (e.g. 2026-02-27-1.log)
+    try {
+      if (existsSync(logsDir)) {
+        for (const f of readdirSync(logsDir)) {
+          if (!f.endsWith(".log") || f === "latest.log") continue;
+          try {
+            const lines = readFileSync(path.join(logsDir, f), "utf8").split("\n");
+            for (const line of lines) {
+              const m = JOIN_RE.exec(line);
+              if (m?.[1]) players.add(m[1].trim());
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+
+    return { players: [...players].sort((a, b) => a.localeCompare(b)) };
+  })
   .post("/:id/players/:name/kick", async ({ params, body, session, status, request }) => {
     if (!session?.user) return status(401, "Unauthorized");
     if (session.user.role !== "admin" && session.user.role !== "operator") return status(403, "Forbidden");
