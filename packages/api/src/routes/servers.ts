@@ -460,6 +460,40 @@ export const serversRoute = new Elysia({ prefix: "/api/servers" })
       recentActivity,
     };
   })
+  // ── Live RCON data only (fast refresh, no file I/O) ──────────────────
+  .get("/:id/players/:name/live", async ({ params, session, status }) => {
+    if (!session?.user) return status(401, "Unauthorized");
+    if (!/^[a-zA-Z0-9_]{1,16}$/.test(params.name)) return status(400, "Invalid player name");
+    try {
+      const online = await getServerStatus(params.id);
+      if (!(online.players as string[]).includes(params.name)) return { online: false, liveData: null };
+      const snbt = await sendCommand(params.id, `data get entity ${params.name}`);
+      const health = snbt.match(/Health: (-?[\d.]+)f/)?.[1];
+      const maxHealth = snbt.match(/(?:MaxHealth|generic\.max_health.*Amount): (-?[\d.]+)/)?.[1];
+      const food = snbt.match(/FoodLevel: (\d+)/)?.[1];
+      const sat = snbt.match(/FoodSaturationLevel: (-?[\d.]+)f/)?.[1];
+      const xpLevel = snbt.match(/XpLevel: (\d+)/)?.[1];
+      const xpP = snbt.match(/XpP: (-?[\d.]+)f/)?.[1];
+      const posM = snbt.match(/Pos: \[(-?[\d.]+)[df]?, (-?[\d.]+)[df]?, (-?[\d.]+)[df]?\]/);
+      const dim = snbt.match(/Dimension: "([^"]+)"/)?.[1] ?? null;
+      return {
+        online: true,
+        liveData: {
+          health: health ? parseFloat(health) : null,
+          maxHealth: maxHealth ? parseFloat(maxHealth) : 20,
+          food: food ? parseInt(food) : null,
+          saturation: sat ? parseFloat(sat) : null,
+          xpLevel: xpLevel ? parseInt(xpLevel) : null,
+          xpProgress: xpP ? parseFloat(xpP) : null,
+          pos: posM ? [parseFloat(posM[1]!), parseFloat(posM[2]!), parseFloat(posM[3]!)] : null,
+          dimension: dim,
+        },
+      };
+    } catch {
+      return { online: false, liveData: null };
+    }
+  })
+
   .post("/:id/players/:name/kick", async ({ params, body, session, status, request }) => {
     if (!session?.user) return status(401, "Unauthorized");
     if (session.user.role !== "admin" && session.user.role !== "operator") return status(403, "Forbidden");

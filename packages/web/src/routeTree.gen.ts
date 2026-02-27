@@ -21,6 +21,7 @@ import { Route as AppServersIdSettingsRouteImport } from './routes/_app/servers/
 import { Route as AppServersIdScheduleRouteImport } from './routes/_app/servers/$id/schedule'
 import { Route as AppServersIdRuntimeRouteImport } from './routes/_app/servers/$id/runtime'
 import { Route as AppServersIdPluginsRouteImport } from './routes/_app/servers/$id/plugins'
+import { Route as AppServersIdPlayersNameRouteImport } from './routes/_app/servers/$id/players.$name'
 import { Route as AppServersIdPlayersRouteImport } from './routes/_app/servers/$id/players'
 import { Route as AppServersIdMapRouteImport } from './routes/_app/servers/$id/map'
 import { Route as AppServersIdFilesRouteImport } from './routes/_app/servers/$id/files'
@@ -88,6 +89,11 @@ const AppServersIdPluginsRoute = AppServersIdPluginsRouteImport.update({
   path: '/plugins',
   getParentRoute: () => AppServersIdRoute,
 } as any)
+const AppServersIdPlayersNameRoute = AppServersIdPlayersNameRouteImport.update({
+  id: '/players/$name',
+  path: '/players/$name',
+  getParentRoute: () => AppServersIdPlayersRoute,
+} as any)
 const AppServersIdPlayersRoute = AppServersIdPlayersRouteImport.update({
   id: '/players',
   path: '/players',
@@ -136,7 +142,8 @@ export interface FileRoutesByFullPath {
   '/servers/$id/console': typeof AppServersIdConsoleRoute
   '/servers/$id/files': typeof AppServersIdFilesRoute
   '/servers/$id/map': typeof AppServersIdMapRoute
-  '/servers/$id/players': typeof AppServersIdPlayersRoute
+  '/servers/$id/players': typeof AppServersIdPlayersRouteWithChildren
+  '/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
   '/servers/$id/plugins': typeof AppServersIdPluginsRoute
   '/servers/$id/runtime': typeof AppServersIdRuntimeRoute
   '/servers/$id/schedule': typeof AppServersIdScheduleRoute
@@ -156,7 +163,8 @@ export interface FileRoutesByTo {
   '/servers/$id/console': typeof AppServersIdConsoleRoute
   '/servers/$id/files': typeof AppServersIdFilesRoute
   '/servers/$id/map': typeof AppServersIdMapRoute
-  '/servers/$id/players': typeof AppServersIdPlayersRoute
+  '/servers/$id/players': typeof AppServersIdPlayersRouteWithChildren
+  '/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
   '/servers/$id/plugins': typeof AppServersIdPluginsRoute
   '/servers/$id/runtime': typeof AppServersIdRuntimeRoute
   '/servers/$id/schedule': typeof AppServersIdScheduleRoute
@@ -178,7 +186,8 @@ export interface FileRoutesById {
   '/_app/servers/$id/console': typeof AppServersIdConsoleRoute
   '/_app/servers/$id/files': typeof AppServersIdFilesRoute
   '/_app/servers/$id/map': typeof AppServersIdMapRoute
-  '/_app/servers/$id/players': typeof AppServersIdPlayersRoute
+  '/_app/servers/$id/players': typeof AppServersIdPlayersRouteWithChildren
+  '/_app/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
   '/_app/servers/$id/plugins': typeof AppServersIdPluginsRoute
   '/_app/servers/$id/runtime': typeof AppServersIdRuntimeRoute
   '/_app/servers/$id/schedule': typeof AppServersIdScheduleRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/servers/$id/files'
     | '/servers/$id/map'
     | '/servers/$id/players'
+    | '/servers/$id/players/$name'
     | '/servers/$id/plugins'
     | '/servers/$id/runtime'
     | '/servers/$id/schedule'
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/servers/$id/files'
     | '/servers/$id/map'
     | '/servers/$id/players'
+    | '/servers/$id/players/$name'
     | '/servers/$id/plugins'
     | '/servers/$id/runtime'
     | '/servers/$id/schedule'
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/_app/servers/$id/files'
     | '/_app/servers/$id/map'
     | '/_app/servers/$id/players'
+    | '/_app/servers/$id/players/$name'
     | '/_app/servers/$id/plugins'
     | '/_app/servers/$id/runtime'
     | '/_app/servers/$id/schedule'
@@ -348,6 +360,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppServersIdPlayersRouteImport
       parentRoute: typeof AppServersIdRoute
     }
+    '/_app/servers/$id/players/$name': {
+      id: '/_app/servers/$id/players/$name'
+      path: '/players/$name'
+      fullPath: '/servers/$id/players/$name'
+      preLoaderRoute: typeof AppServersIdPlayersNameRouteImport
+      parentRoute: typeof AppServersIdPlayersRoute
+    }
     '/_app/servers/$id/map': {
       id: '/_app/servers/$id/map'
       path: '/map'
@@ -393,6 +412,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppServersIdPlayersRouteChildren {
+  AppServersIdPlayersNameRoute: typeof AppServersIdPlayersNameRoute
+}
+
+const AppServersIdPlayersRouteChildren: AppServersIdPlayersRouteChildren = {
+  AppServersIdPlayersNameRoute: AppServersIdPlayersNameRoute,
+}
+
+const AppServersIdPlayersRouteWithChildren = AppServersIdPlayersRoute._addFileChildren(
+  AppServersIdPlayersRouteChildren,
+)
+
 interface AppServersIdRouteChildren {
   AppServersIdAlertsRoute: typeof AppServersIdAlertsRoute
   AppServersIdAnalyticsRoute: typeof AppServersIdAnalyticsRoute
@@ -400,7 +431,7 @@ interface AppServersIdRouteChildren {
   AppServersIdConsoleRoute: typeof AppServersIdConsoleRoute
   AppServersIdFilesRoute: typeof AppServersIdFilesRoute
   AppServersIdMapRoute: typeof AppServersIdMapRoute
-  AppServersIdPlayersRoute: typeof AppServersIdPlayersRoute
+  AppServersIdPlayersRoute: typeof AppServersIdPlayersRouteWithChildren
   AppServersIdPluginsRoute: typeof AppServersIdPluginsRoute
   AppServersIdRuntimeRoute: typeof AppServersIdRuntimeRoute
   AppServersIdScheduleRoute: typeof AppServersIdScheduleRoute
@@ -416,7 +447,7 @@ const AppServersIdRouteChildren: AppServersIdRouteChildren = {
   AppServersIdConsoleRoute: AppServersIdConsoleRoute,
   AppServersIdFilesRoute: AppServersIdFilesRoute,
   AppServersIdMapRoute: AppServersIdMapRoute,
-  AppServersIdPlayersRoute: AppServersIdPlayersRoute,
+  AppServersIdPlayersRoute: AppServersIdPlayersRouteWithChildren,
   AppServersIdPluginsRoute: AppServersIdPluginsRoute,
   AppServersIdRuntimeRoute: AppServersIdRuntimeRoute,
   AppServersIdScheduleRoute: AppServersIdScheduleRoute,
