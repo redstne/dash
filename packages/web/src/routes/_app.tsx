@@ -138,7 +138,7 @@ function AppSidebar() {
   return (
     <Sidebar collapsible="offcanvas">
       {/* Sidebar header — logo */}
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
+      <SidebarHeader className="border-b border-sidebar-border px-4 h-14 flex items-center">
         <div className="flex items-center gap-2">
           <div className="relative shrink-0">
             <Zap className="w-5 h-5 text-red-600 fill-red-600" />
@@ -244,8 +244,8 @@ function AppLayout() {
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           {/* Header */}
-          <header className="border-b bg-card sticky top-0 z-20 shadow-md shadow-red-600/5">
-            <div className="flex items-center gap-3 px-4 py-2.5">
+          <header className="border-b bg-card sticky top-0 z-20 shadow-md shadow-red-600/5 h-14">
+            <div className="flex items-center h-full gap-3 px-4">
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               <div className="ml-auto flex items-center gap-2">
                 {/* Server status pills — only when on a server page */}
