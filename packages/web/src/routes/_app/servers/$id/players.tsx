@@ -82,7 +82,7 @@ function PlayersPage() {
 function PlayerListView({ id, onSelect }: { id: string; onSelect: (n: string) => void }) {
   const [online, setOnline] = useState<string[]>([]);
   const [connected, setConnected] = useState(false);
-  const [filter, setFilter] = useState<Filter>("online");
+  const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
 
   const { data: historyData, isLoading: histLoading } = useQuery({
@@ -157,7 +157,7 @@ function PlayerListView({ id, onSelect }: { id: string; onSelect: (n: string) =>
         ) : displayed.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <Users className="w-10 h-10 mb-3 opacity-40" />
-            <p className="text-sm">{filter === "online" ? "No players currently online." : "No players found."}</p>
+            <p className="text-sm">{filter === "online" ? "No players currently online." : filter === "offline" ? "No offline players found." : "No players found in logs yet."}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
