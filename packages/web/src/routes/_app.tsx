@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/sidebar.tsx";
 import {
   Server, Users, ShieldCheck, LogOut, Zap, ChevronDown, Activity,
-  Terminal, Map, Package, FileText, AlertTriangle, BarChart3, Settings, HardDrive, ArrowLeft, Puzzle,
+  Terminal, Map, Package, FileText, AlertTriangle, BarChart3, Settings, HardDrive, ArrowLeft, Puzzle, Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 
@@ -56,6 +56,7 @@ const serverNav = [
   { label: "Players",   icon: Users,          tab: "players" },
   { label: "Live Map",  icon: Map,            tab: "map" },
   { label: "Plugins",   icon: Package,        tab: "plugins" },
+  { label: "Runtime",   icon: Cpu,            tab: "runtime" },
   { label: "Files",     icon: FileText,       tab: "files" },
   { label: "Alerts",    icon: AlertTriangle,  tab: "alerts" },
   { label: "Analytics", icon: BarChart3,      tab: "analytics" },
@@ -111,7 +112,7 @@ function AppSidebar() {
   const { data: pluginsMeta } = useQuery<{ type: "plugins" | "mods" | "none" }>({
     queryKey: ["plugins-meta", currentServerId],
     queryFn: () =>
-      fetch(`/api/servers/${currentServerId}/plugins`, { credentials: "include" })
+      fetch(`/api/servers/${currentServerId}/mods`, { credentials: "include" })
         .then((r) => r.json())
         .then((d) => ({ type: d.type })),
     enabled: !!currentServerId,

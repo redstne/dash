@@ -10,6 +10,8 @@ import { filesRoute } from "./routes/files.ts";
 import { membersRoute, auditRoute } from "./routes/members.ts";
 import { analyticsRoute } from "./routes/analytics.ts";
 import { backupsRoute } from "./routes/backups.ts";
+import { modsRoute } from "./routes/mods.ts";
+import { runtimeRoute } from "./routes/runtime.ts";
 import { startBackupScheduler } from "./lib/backup.ts";
 import { existsSync, mkdirSync } from "node:fs";
 import { db, schema } from "./db/index.ts";
@@ -91,6 +93,8 @@ const app = new Elysia()
   .use(auditRoute)
   .use(analyticsRoute)
   .use(backupsRoute)
+  .use(modsRoute)
+  .use(runtimeRoute)
   // ── Health check ─────────────────────────────────────────────────────────
   .get("/api/health", () => ({ status: "ok", ts: Date.now() }))
   // ── Serve built React SPA (production) ───────────────────────────────────

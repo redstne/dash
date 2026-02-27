@@ -35,5 +35,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Runtime data — SQLite database and server file mounts
 data/
+
+# Feature documentation (local reference, not versioned)
+features/
 # Windows ADS metadata
 *:Zone.Identifier

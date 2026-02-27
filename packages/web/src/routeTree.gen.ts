@@ -17,6 +17,7 @@ import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppServersIdRouteImport } from './routes/_app/servers/$id'
 import { Route as AppServersIdSettingsRouteImport } from './routes/_app/servers/$id/settings'
 import { Route as AppServersIdPluginsRouteImport } from './routes/_app/servers/$id/plugins'
+import { Route as AppServersIdRuntimeRouteImport } from './routes/_app/servers/$id/runtime'
 import { Route as AppServersIdPlayersRouteImport } from './routes/_app/servers/$id/players'
 import { Route as AppServersIdMapRouteImport } from './routes/_app/servers/$id/map'
 import { Route as AppServersIdFilesRouteImport } from './routes/_app/servers/$id/files'
@@ -62,6 +63,11 @@ const AppServersIdSettingsRoute = AppServersIdSettingsRouteImport.update({
 const AppServersIdPluginsRoute = AppServersIdPluginsRouteImport.update({
   id: '/plugins',
   path: '/plugins',
+  getParentRoute: () => AppServersIdRoute,
+} as any)
+const AppServersIdRuntimeRoute = AppServersIdRuntimeRouteImport.update({
+  id: '/runtime',
+  path: '/runtime',
   getParentRoute: () => AppServersIdRoute,
 } as any)
 const AppServersIdPlayersRoute = AppServersIdPlayersRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/servers/$id/map': typeof AppServersIdMapRoute
   '/servers/$id/players': typeof AppServersIdPlayersRoute
   '/servers/$id/plugins': typeof AppServersIdPluginsRoute
+  '/servers/$id/runtime': typeof AppServersIdRuntimeRoute
   '/servers/$id/settings': typeof AppServersIdSettingsRoute
 }
 export interface FileRoutesByTo {
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/servers/$id/map': typeof AppServersIdMapRoute
   '/servers/$id/players': typeof AppServersIdPlayersRoute
   '/servers/$id/plugins': typeof AppServersIdPluginsRoute
+  '/servers/$id/runtime': typeof AppServersIdRuntimeRoute
   '/servers/$id/settings': typeof AppServersIdSettingsRoute
 }
 export interface FileRoutesById {
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/_app/servers/$id/map': typeof AppServersIdMapRoute
   '/_app/servers/$id/players': typeof AppServersIdPlayersRoute
   '/_app/servers/$id/plugins': typeof AppServersIdPluginsRoute
+  '/_app/servers/$id/runtime': typeof AppServersIdRuntimeRoute
   '/_app/servers/$id/settings': typeof AppServersIdSettingsRoute
 }
 export interface FileRouteTypes {
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/servers/$id/map'
     | '/servers/$id/players'
     | '/servers/$id/plugins'
+    | '/servers/$id/runtime'
     | '/servers/$id/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/servers/$id/map'
     | '/servers/$id/players'
     | '/servers/$id/plugins'
+    | '/servers/$id/runtime'
     | '/servers/$id/settings'
   id:
     | '__root__'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/_app/servers/$id/map'
     | '/_app/servers/$id/players'
     | '/_app/servers/$id/plugins'
+    | '/_app/servers/$id/runtime'
     | '/_app/servers/$id/settings'
   fileRoutesById: FileRoutesById
 }
@@ -314,6 +326,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppServersIdAlertsRouteImport
       parentRoute: typeof AppServersIdRoute
     }
+    '/_app/servers/$id/runtime': {
+      id: '/_app/servers/$id/runtime'
+      path: '/runtime'
+      fullPath: '/servers/$id/runtime'
+      preLoaderRoute: typeof AppServersIdRuntimeRouteImport
+      parentRoute: typeof AppServersIdRoute
+    }
   }
 }
 
@@ -326,6 +345,7 @@ interface AppServersIdRouteChildren {
   AppServersIdMapRoute: typeof AppServersIdMapRoute
   AppServersIdPlayersRoute: typeof AppServersIdPlayersRoute
   AppServersIdPluginsRoute: typeof AppServersIdPluginsRoute
+  AppServersIdRuntimeRoute: typeof AppServersIdRuntimeRoute
   AppServersIdSettingsRoute: typeof AppServersIdSettingsRoute
 }
 
@@ -338,6 +358,7 @@ const AppServersIdRouteChildren: AppServersIdRouteChildren = {
   AppServersIdMapRoute: AppServersIdMapRoute,
   AppServersIdPlayersRoute: AppServersIdPlayersRoute,
   AppServersIdPluginsRoute: AppServersIdPluginsRoute,
+  AppServersIdRuntimeRoute: AppServersIdRuntimeRoute,
   AppServersIdSettingsRoute: AppServersIdSettingsRoute,
 }
 
