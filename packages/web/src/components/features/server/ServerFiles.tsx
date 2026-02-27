@@ -96,11 +96,14 @@ export function ServerFiles({ serverId }: { serverId: string }) {
   const dragCounter = useRef(0); // track nested dragenter/dragleave
 
   // ── Directory listing ───────────────────────────────────────────────────
-  const { data: entries = [], isLoading: listLoading } = useQuery<Entry[]>({
+  const { data: entries = [], isLoading: listLoading, error: listError } = useQuery<Entry[]>({
     queryKey: ["files", id, currentPath],
     queryFn: () =>
       fetch(`/api/servers/${id}/files?path=${encodeURIComponent(currentPath)}`, { credentials: "include" })
-        .then((r) => r.json()),
+        .then(async (r) => {
+          if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error((b as { error?: string }).error ?? r.statusText); }
+          return r.json();
+        }),
   });
 
   // ── Save file ───────────────────────────────────────────────────────────
@@ -268,6 +271,11 @@ export function ServerFiles({ serverId }: { serverId: string }) {
                 {Array.from({ length: 8 }).map((_, i) => (
                   <Skeleton key={i} className="h-7 w-full" />
                 ))}
+              </div>
+            ) : listError ? (
+              <div className="p-4 space-y-1">
+                <p className="text-xs font-medium text-destructive">File browser unavailable</p>
+                <p className="text-xs text-muted-foreground">{(listError as Error).message}</p>
               </div>
             ) : sorted.length === 0 ? (
               <p className="p-4 text-xs text-muted-foreground">Empty directory.</p>

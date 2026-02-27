@@ -28,9 +28,7 @@ async function resolveServerRoot(serverId: string): Promise<string> {
     .limit(1);
   if (!server) throw new Error("Server not found");
   if (server.logPath) return deriveServerRoot(server.logPath);
-  // Fallback for servers without logPath
-  const base = process.env["SERVER_FILES_ROOT"] ?? "/data/servers";
-  return path.resolve(base, serverId);
+  throw new Error("logPath not configured — set the Log Path in Server Settings → Integrations");
 }
 
 function safePath(root: string, requested: string): string {
