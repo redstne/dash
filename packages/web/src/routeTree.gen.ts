@@ -25,6 +25,7 @@ import { Route as AppServersIdPlayersNameRouteImport } from './routes/_app/serve
 import { Route as AppServersIdPlayersRouteImport } from './routes/_app/servers/$id/players'
 import { Route as AppServersIdMapRouteImport } from './routes/_app/servers/$id/map'
 import { Route as AppServersIdFilesRouteImport } from './routes/_app/servers/$id/files'
+import { Route as AppServersIdLogsRouteImport } from './routes/_app/servers/$id/logs'
 import { Route as AppServersIdConsoleRouteImport } from './routes/_app/servers/$id/console'
 import { Route as AppServersIdBackupsRouteImport } from './routes/_app/servers/$id/backups'
 import { Route as AppServersIdAnalyticsRouteImport } from './routes/_app/servers/$id/analytics'
@@ -109,6 +110,11 @@ const AppServersIdFilesRoute = AppServersIdFilesRouteImport.update({
   path: '/files',
   getParentRoute: () => AppServersIdRoute,
 } as any)
+const AppServersIdLogsRoute = AppServersIdLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => AppServersIdRoute,
+} as any)
 const AppServersIdConsoleRoute = AppServersIdConsoleRouteImport.update({
   id: '/console',
   path: '/console',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/servers/$id/backups': typeof AppServersIdBackupsRoute
   '/servers/$id/console': typeof AppServersIdConsoleRoute
   '/servers/$id/files': typeof AppServersIdFilesRoute
+  '/servers/$id/logs': typeof AppServersIdLogsRoute
   '/servers/$id/map': typeof AppServersIdMapRoute
   '/servers/$id/players': typeof AppServersIdPlayersRouteWithChildren
   '/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/servers/$id/backups': typeof AppServersIdBackupsRoute
   '/servers/$id/console': typeof AppServersIdConsoleRoute
   '/servers/$id/files': typeof AppServersIdFilesRoute
+  '/servers/$id/logs': typeof AppServersIdLogsRoute
   '/servers/$id/map': typeof AppServersIdMapRoute
   '/servers/$id/players': typeof AppServersIdPlayersRouteWithChildren
   '/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/_app/servers/$id/backups': typeof AppServersIdBackupsRoute
   '/_app/servers/$id/console': typeof AppServersIdConsoleRoute
   '/_app/servers/$id/files': typeof AppServersIdFilesRoute
+  '/_app/servers/$id/logs': typeof AppServersIdLogsRoute
   '/_app/servers/$id/map': typeof AppServersIdMapRoute
   '/_app/servers/$id/players': typeof AppServersIdPlayersRouteWithChildren
   '/_app/servers/$id/players/$name': typeof AppServersIdPlayersNameRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/servers/$id/backups'
     | '/servers/$id/console'
     | '/servers/$id/files'
+    | '/servers/$id/logs'
     | '/servers/$id/map'
     | '/servers/$id/players'
     | '/servers/$id/players/$name'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/servers/$id/backups'
     | '/servers/$id/console'
     | '/servers/$id/files'
+    | '/servers/$id/logs'
     | '/servers/$id/map'
     | '/servers/$id/players'
     | '/servers/$id/players/$name'
@@ -251,6 +262,7 @@ export interface FileRouteTypes {
     | '/_app/servers/$id/backups'
     | '/_app/servers/$id/console'
     | '/_app/servers/$id/files'
+    | '/_app/servers/$id/logs'
     | '/_app/servers/$id/map'
     | '/_app/servers/$id/players'
     | '/_app/servers/$id/players/$name'
@@ -381,6 +393,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppServersIdFilesRouteImport
       parentRoute: typeof AppServersIdRoute
     }
+    '/_app/servers/$id/logs': {
+      id: '/_app/servers/$id/logs'
+      path: '/logs'
+      fullPath: '/servers/$id/logs'
+      preLoaderRoute: typeof AppServersIdLogsRouteImport
+      parentRoute: typeof AppServersIdRoute
+    }
     '/_app/servers/$id/console': {
       id: '/_app/servers/$id/console'
       path: '/console'
@@ -430,6 +449,7 @@ interface AppServersIdRouteChildren {
   AppServersIdBackupsRoute: typeof AppServersIdBackupsRoute
   AppServersIdConsoleRoute: typeof AppServersIdConsoleRoute
   AppServersIdFilesRoute: typeof AppServersIdFilesRoute
+  AppServersIdLogsRoute: typeof AppServersIdLogsRoute
   AppServersIdMapRoute: typeof AppServersIdMapRoute
   AppServersIdPlayersRoute: typeof AppServersIdPlayersRouteWithChildren
   AppServersIdPluginsRoute: typeof AppServersIdPluginsRoute
@@ -446,6 +466,7 @@ const AppServersIdRouteChildren: AppServersIdRouteChildren = {
   AppServersIdBackupsRoute: AppServersIdBackupsRoute,
   AppServersIdConsoleRoute: AppServersIdConsoleRoute,
   AppServersIdFilesRoute: AppServersIdFilesRoute,
+  AppServersIdLogsRoute: AppServersIdLogsRoute,
   AppServersIdMapRoute: AppServersIdMapRoute,
   AppServersIdPlayersRoute: AppServersIdPlayersRouteWithChildren,
   AppServersIdPluginsRoute: AppServersIdPluginsRoute,

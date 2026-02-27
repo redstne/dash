@@ -16,6 +16,7 @@ import { scheduleRoute, startTaskScheduler } from "./routes/schedule.ts";
 import { webhooksRoute } from "./routes/webhooks.ts";
 import { whitelistRoute } from "./routes/whitelist.ts";
 import { resourcesRoute } from "./routes/resources.ts";
+import { logsRoute, logsTailRoute } from "./routes/logs.ts";
 import { startBackupScheduler } from "./lib/backup.ts";
 import { existsSync, mkdirSync } from "node:fs";
 import { db, schema } from "./db/index.ts";
@@ -65,12 +66,8 @@ const app = new Elysia()
       }),
     })
   )
-  // ── Dev docs (disabled in production) ───────────────────────────────────
-  .use(
-    process.env["NODE_ENV"] !== "production"
-      ? swagger({ path: "/api/docs" })
-      : new Elysia()
-  )
+  // ── API docs ─────────────────────────────────────────────────────────────
+  .use(swagger({ path: "/api/docs", documentation: { info: { title: "RedstnKit API", version: "1.0.0", description: "Minecraft server management dashboard API" } } }))
   // ── Better Auth handler ───────────────────────────────────────────────────
   // Elysia's global hooks consume request.body before our handler runs.
   // We re-serialise from the already-parsed `body` context value so Better
@@ -103,6 +100,8 @@ const app = new Elysia()
   .use(webhooksRoute)
   .use(whitelistRoute)
   .use(resourcesRoute)
+  .use(logsRoute)
+  .use(logsTailRoute)
   // ── Health check ─────────────────────────────────────────────────────────
   .get("/api/health", () => ({ status: "ok", ts: Date.now() }))
   // ── Serve built React SPA (production) ───────────────────────────────────
@@ -118,9 +117,7 @@ const app = new Elysia()
   .listen(PORT);
 
 console.log(`🚀 RedstnKit API running on http://localhost:${PORT}`);
-if (process.env["NODE_ENV"] !== "production") {
-  console.log(`📖 Swagger docs at http://localhost:${PORT}/api/docs`);
-}
+console.log(`📖 Swagger docs at http://localhost:${PORT}/api/docs`);
 
 // Start scheduled backup runner
 startBackupScheduler();

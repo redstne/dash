@@ -61,7 +61,7 @@ function AnalyticsPage() {
         chatToday: number;
       }>;
     },
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
   });
 
   const { data: resources } = useQuery({

@@ -9,6 +9,7 @@ import Elysia, { t } from "elysia";
 import { authPlugin, requireRole } from "../plugins/rbac.ts";
 import { readdir, stat } from "node:fs/promises";
 import { createReadStream, existsSync } from "node:fs";
+import fs from "node:fs";
 import { createGunzip } from "node:zlib";
 import path from "node:path";
 import { db, schema } from "../db/index.ts";
@@ -151,3 +152,86 @@ export const logsRoute = new Elysia({ prefix: "/api/servers" })
       }),
     }
   );
+
+// ── Live log tail WebSocket ─────────────────────────────────────────────────
+// Subscribers per serverId: Set of sender functions
+const logTailSubs = new Map<string, Set<(line: string) => void>>();
+
+interface LogTailerState { stop: () => void }
+const activeTailers = new Map<string, LogTailerState>();
+
+function startTailer(serverId: string, logPath: string) {
+  if (activeTailers.has(serverId)) return;
+  let position = 0;
+  try { position = fs.statSync(logPath).size; } catch { return; }
+
+  const iv = setInterval(() => {
+    const subs = logTailSubs.get(serverId);
+    if (!subs || subs.size === 0) return;
+    let size = position;
+    try { size = fs.statSync(logPath).size; } catch { return; }
+    if (size <= position) return;
+    const fd = fs.openSync(logPath, "r");
+    const buf = Buffer.alloc(size - position);
+    fs.readSync(fd, buf, 0, buf.length, position);
+    fs.closeSync(fd);
+    position = size;
+    for (const line of buf.toString("utf8").split("\n").filter((l) => l.trim())) {
+      for (const send of subs) send(line);
+    }
+  }, 500);
+
+  activeTailers.set(serverId, { stop: () => clearInterval(iv) });
+}
+
+async function ensureTailer(serverId: string) {
+  if (activeTailers.has(serverId)) return;
+  const [server] = await db
+    .select({ logPath: schema.servers.logPath })
+    .from(schema.servers)
+    .where(eq(schema.servers.id, serverId))
+    .limit(1);
+  if (server?.logPath) startTailer(serverId, server.logPath);
+}
+
+export const logsTailRoute = new Elysia({ prefix: "/api/servers" })
+  .use(authPlugin)
+  /** WebSocket: live tail of latest.log — read-only, viewer role */
+  .ws("/:id/logs/tail", {
+    async open(ws) {
+      if (!ws.data.session?.user) { ws.close(); return; }
+      const serverId = ws.data.params.id;
+      if (!logTailSubs.has(serverId)) logTailSubs.set(serverId, new Set());
+
+      // Send last 200 lines of current file immediately
+      const [server] = await db
+        .select({ logPath: schema.servers.logPath })
+        .from(schema.servers)
+        .where(eq(schema.servers.id, serverId))
+        .limit(1);
+      if (server?.logPath) {
+        const root = (() => {
+          const parts = server.logPath.split("/");
+          const idx = parts.lastIndexOf("logs");
+          return idx !== -1 ? parts.slice(0, idx).join("/") || "/" : null;
+        })();
+        if (root) {
+          const latestPath = path.join(root, "logs", "latest.log");
+          try {
+            const lines = await readPlainLog(latestPath, 200);
+            ws.send(JSON.stringify({ type: "history", lines }));
+          } catch { /* file might not exist */ }
+        }
+      }
+
+      const send = (line: string) => ws.send(JSON.stringify({ type: "line", data: line }));
+      logTailSubs.get(serverId)!.add(send);
+      (ws as unknown as { _logSend: typeof send })._logSend = send;
+      void ensureTailer(serverId);
+    },
+    close(ws) {
+      const serverId = ws.data.params.id;
+      const send = (ws as unknown as { _logSend?: (l: string) => void })._logSend;
+      if (send) logTailSubs.get(serverId)?.delete(send);
+    },
+  });

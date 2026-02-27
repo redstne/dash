@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/sidebar.tsx";
 import {
   Server, Users, ShieldCheck, LogOut, Zap, ChevronDown, Activity,
-  Terminal, Map, Package, FileText, AlertTriangle, BarChart3, Settings, HardDrive, ArrowLeft, Puzzle, Cpu, Clock, Bell, Shield,
+  Terminal, Map, Package, FileText, AlertTriangle, BarChart3, Settings, HardDrive, ArrowLeft, Puzzle, Cpu, Clock, Bell, Shield, ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 
@@ -53,6 +53,7 @@ const globalNav = [
 
 const serverNav = [
   { label: "Console",   icon: Terminal,       tab: "console" },
+  { label: "Logs",      icon: ScrollText,     tab: "logs" },
   { label: "Players",   icon: Users,          tab: "players" },
   { label: "Whitelist", icon: Shield,         tab: "whitelist" },
   { label: "Live Map",  icon: Map,            tab: "map" },
@@ -221,7 +222,7 @@ function AppLayout() {
   const currentTab = serverMatch?.[2] ?? "";
 
   // Console/files need full height without scroll
-  const isConsole = currentTab === "console" || currentTab === "" || currentTab === "files";
+  const isConsole = currentTab === "console" || currentTab === "" || currentTab === "files" || currentTab === "logs";
 
   interface ServerStatus { online: boolean; playerCount: number; maxPlayers: number; tps: number | null; }
   const { data: status } = useQuery<ServerStatus>({
