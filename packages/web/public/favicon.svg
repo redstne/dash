@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Grass block face -->
+  <rect width="32" height="32" rx="4" fill="#5D7C32"/>
+  <!-- Dirt part -->
+  <rect y="18" width="32" height="14" rx="4" fill="#8B5E3C"/>
+  <rect y="18" width="32" height="6" fill="#8B5E3C"/>
+  <!-- Grass top -->
+  <rect y="14" width="32" height="6" fill="#5D7C32"/>
+  <!-- Block grid lines (darker) -->
+  <line x1="0" y1="18" x2="32" y2="18" stroke="#3d5222" stroke-width="1.5" opacity="0.6"/>
+  <!-- Highlight -->
+  <rect x="2" y="2" width="28" height="4" rx="2" fill="white" opacity="0.15"/>
+</svg>
