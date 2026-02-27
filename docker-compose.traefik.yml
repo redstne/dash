@@ -61,10 +61,6 @@ services:
       - traefik.http.routers.redstne.entrypoints=websecure
       - traefik.http.routers.redstne.tls.certresolver=letsencrypt
       - traefik.http.services.redstne.loadbalancer.server.port=3001
-      # WebSocket support (console)
-      - traefik.http.routers.redstne.middlewares=ws-headers
-      - traefik.http.middlewares.ws-headers.headers.customrequestheaders.Connection=Upgrade
-      - traefik.http.middlewares.ws-headers.headers.customrequestheaders.Upgrade=websocket
     networks:
       - traefik
       - redstne
