@@ -8,11 +8,14 @@ import { eq } from "drizzle-orm";
 import { audit } from "../../lib/audit.ts";
 
 const SAFE_ID = /^[a-zA-Z0-9_-]+$/;
-const SAFE_FILENAME = /^[a-zA-Z0-9_\-.+ ]+\.jar(\.disabled)?$/;
+// Allow common chars in Modrinth filenames: alphanumeric, dash, dot, underscore, plus, brackets, parens, @, comma, space
+const SAFE_FILENAME = /^[a-zA-Z0-9_\-.+[\]()@,% ]+\.jar(\.disabled)?$/;
 const MODRINTH_CDN_PREFIXES = [
   "https://cdn.modrinth.com/",
   "https://cdn-raw.modrinth.com/",
 ];
+// For "bukkit" (Paper/Spigot/Bukkit/Purpur servers), also include all compatible loader tags
+const BUKKIT_LOADERS = ["bukkit", "paper", "spigot", "purpur", "folia"];
 const MODRINTH_API = "https://api.modrinth.com/v2";
 const MODRINTH_UA = "redstnkit/dash (https://github.com/redstnkit/dash)";
 
@@ -97,7 +100,11 @@ export const modsRoute = new Elysia({ prefix: "/api/servers" })
       if (logPath === null && !SAFE_ID.test(params.id)) return status(404, "Server not found");
       const { q = "", loader, mcVersion } = query;
       const facets: string[][] = [["project_type:mod", "project_type:plugin"]];
-      if (loader) facets.push([`categories:${loader}`]);
+      if (loader) {
+        // Expand bukkit to all compatible Paper/Spigot/Purpur/Folia loaders (OR group)
+        const loaders = loader === "bukkit" ? BUKKIT_LOADERS : [loader];
+        facets.push(loaders.map((l) => `categories:${l}`));
+      }
       if (mcVersion) facets.push([`versions:${mcVersion}`]);
       const qs = new URLSearchParams({ query: q, limit: "20", offset: "0", facets: JSON.stringify(facets) });
       const res = await fetch(`${MODRINTH_API}/search?${qs}`, {
@@ -116,7 +123,11 @@ export const modsRoute = new Elysia({ prefix: "/api/servers" })
       if (!session?.user) return status(401, "Unauthorized");
       const { loader, mcVersion } = query;
       const qs = new URLSearchParams();
-      if (loader) qs.set("loaders", JSON.stringify([loader]));
+      if (loader) {
+        // Expand bukkit to all compatible loaders so Paper-only plugins show their versions
+        const loaders = loader === "bukkit" ? BUKKIT_LOADERS : [loader];
+        qs.set("loaders", JSON.stringify(loaders));
+      }
       if (mcVersion) qs.set("game_versions", JSON.stringify([mcVersion]));
       const res = await fetch(`${MODRINTH_API}/project/${params.projectId}/version?${qs}`, {
         headers: { "User-Agent": MODRINTH_UA },
@@ -205,9 +216,11 @@ export const modsRoute = new Elysia({ prefix: "/api/servers" })
       const logPath = await getServerLogPath(params.id);
       const { type, dir } = deriveModsDir(logPath);
       if (type === "none") return status(404, "Mods directory not found");
-      const dest = path.join(dir, filename);
+      // Verify the resolved path stays within the mods/plugins directory
+      const dest = path.resolve(dir, filename);
+      if (path.dirname(dest) !== dir) return status(400, "Invalid filename");
       const res = await fetch(url);
-      if (!res.ok) return status(502, "Download from Modrinth failed");
+      if (!res.ok) return status(502, `Download from Modrinth failed (${res.status})`);
       await Bun.write(dest, res);
       await audit({
         userId: session.user.id,

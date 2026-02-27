@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   Package, RefreshCw, Search, HardDrive, Puzzle, Power, PowerOff, Trash2,
-  Plus, Download, ExternalLink, Loader2, X,
+  Plus, Download, ExternalLink, Loader2, X, AlertCircle,
 } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
@@ -80,6 +80,7 @@ function ModrinthDialog({ serverId, modType, onClose, onInstalled }: {
   const [selectedProject, setSelectedProject] = useState<ModrinthHit | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<ModrinthVersion | null>(null);
   const [installing, setInstalling] = useState(false);
+  const [installError, setInstallError] = useState<string | null>(null);
 
   const loader = modType === "plugins" ? "bukkit" : undefined;
 
@@ -115,6 +116,7 @@ function ModrinthDialog({ serverId, modType, onClose, onInstalled }: {
     const file = selectedVersion.files.find((f) => f.primary) ?? selectedVersion.files[0];
     if (!file) return;
     setInstalling(true);
+    setInstallError(null);
     try {
       const res = await fetch(`/api/servers/${serverId}/mods/install`, {
         method: "POST",
@@ -122,7 +124,15 @@ function ModrinthDialog({ serverId, modType, onClose, onInstalled }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: file.url, filename: file.filename }),
       });
-      if (res.ok) { onInstalled(); onClose(); }
+      if (res.ok) {
+        onInstalled();
+        onClose();
+      } else {
+        const text = await res.text();
+        setInstallError(text || `Server error (${res.status})`);
+      }
+    } catch (e) {
+      setInstallError(e instanceof Error ? e.message : "Network error");
     } finally {
       setInstalling(false);
     }
@@ -205,11 +215,23 @@ function ModrinthDialog({ serverId, modType, onClose, onInstalled }: {
 
             {loadingVersions && <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>}
 
-            {!loadingVersions && versions && (
+            {!loadingVersions && versions && versions.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+                <AlertCircle className="w-7 h-7 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">No compatible versions found for this server type.</p>
+                <Button variant="outline" size="sm" className="h-7 text-xs mt-1" asChild>
+                  <a href={`https://modrinth.com/mod/${selectedProject.slug}`} target="_blank" rel="noreferrer">
+                    <ExternalLink className="w-3.5 h-3.5 mr-1.5" />View on Modrinth
+                  </a>
+                </Button>
+              </div>
+            )}
+
+            {!loadingVersions && versions && versions.length > 0 && (
               <div className="space-y-3">
                 <div>
                   <Label className="text-xs text-muted-foreground mb-1.5 block">Select version</Label>
-                  <Select onValueChange={(v) => setSelectedVersion(versions.find((x) => x.id === v) ?? null)}>
+                  <Select onValueChange={(v) => { setSelectedVersion(versions.find((x) => x.id === v) ?? null); setInstallError(null); }}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder="Choose a version…" />
                     </SelectTrigger>
@@ -228,6 +250,13 @@ function ModrinthDialog({ serverId, modType, onClose, onInstalled }: {
                     <p><span className="text-muted-foreground">File:</span> {selectedVersion.files.find((f) => f.primary)?.filename ?? selectedVersion.files[0]?.filename}</p>
                     <p><span className="text-muted-foreground">MC:</span> {selectedVersion.game_versions.join(", ")}</p>
                     <p><span className="text-muted-foreground">Loaders:</span> {selectedVersion.loaders.join(", ")}</p>
+                  </div>
+                )}
+
+                {installError && (
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg border border-destructive/40 bg-destructive/10 text-xs text-destructive">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{installError}</span>
                   </div>
                 )}
 
