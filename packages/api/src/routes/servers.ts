@@ -58,6 +58,14 @@ function derivePropertiesPath(logPath: string | null): string | null {
   return [...parts.slice(0, logsIdx), "server.properties"].join("/");
 }
 
+/** Derive server root directory from logPath (/data/mc/logs/latest.log → /data/mc). */
+function deriveServerRoot(logPath: string): string {
+  const parts = logPath.split("/");
+  const logsIdx = parts.lastIndexOf("logs");
+  if (logsIdx === -1) throw new Error("Cannot derive server root from logPath");
+  return parts.slice(0, logsIdx).join("/") || "/";
+}
+
 /** Parse a .jar filename into name and version (e.g. "EssentialsX-2.20.1.jar" → { name: "EssentialsX", version: "2.20.1" }). */
 function parseJarName(filename: string): { name: string; version: string } {
   const base = filename.replace(/\.jar$/i, "");
@@ -304,6 +312,137 @@ export const serversRoute = new Elysia({ prefix: "/api/servers" })
     } catch {}
 
     return { players: [...players].sort((a, b) => a.localeCompare(b)) };
+  })
+  // Player details — stats, advancements, last seen, live RCON data
+  .get("/:id/players/:name/details", async ({ params, session, status }) => {
+    if (!session?.user) return status(401, "Unauthorized");
+    if (!/^[a-zA-Z0-9_]{1,16}$/.test(params.name)) return status(400, "Invalid player name");
+
+    const [server] = await db
+      .select({ logPath: schema.servers.logPath })
+      .from(schema.servers)
+      .where(eq(schema.servers.id, params.id))
+      .limit(1);
+    if (!server) return status(404, "Server not found");
+
+    const root = server.logPath ? (() => {
+      try { return deriveServerRoot(server.logPath!); } catch { return null; }
+    })() : null;
+
+    // ── UUID via usercache.json ───────────────────────────────────────────
+    let uuid: string | null = null;
+    if (root) {
+      try {
+        const cache = JSON.parse(readFileSync(path.join(root, "usercache.json"), "utf8")) as { uuid: string; name: string }[];
+        uuid = cache.find((e) => e.name.toLowerCase() === params.name.toLowerCase())?.uuid ?? null;
+      } catch {}
+    }
+
+    // ── Stats JSON ───────────────────────────────────────────────────────
+    let stats: Record<string, unknown> | null = null;
+    if (root && uuid) {
+      try {
+        const raw = JSON.parse(readFileSync(path.join(root, "world", "stats", `${uuid}.json`), "utf8"));
+        const custom = (raw.stats?.["minecraft:custom"] ?? {}) as Record<string, number>;
+        const mined = (raw.stats?.["minecraft:mined"] ?? {}) as Record<string, number>;
+        const crafted = (raw.stats?.["minecraft:crafted"] ?? {}) as Record<string, number>;
+        const killedBy = (raw.stats?.["minecraft:killed_by"] ?? {}) as Record<string, number>;
+        const killed = (raw.stats?.["minecraft:killed"] ?? {}) as Record<string, number>;
+        stats = {
+          deaths: custom["minecraft:deaths"] ?? 0,
+          mobKills: custom["minecraft:mob_kills"] ?? 0,
+          playerKills: custom["minecraft:player_kills"] ?? 0,
+          playTimeTicks: custom["minecraft:play_time"] ?? 0,
+          jumpCount: custom["minecraft:jump"] ?? 0,
+          damageTaken: custom["minecraft:damage_taken"] ?? 0,
+          damageDealt: custom["minecraft:damage_dealt"] ?? 0,
+          walkCm: custom["minecraft:walk_one_cm"] ?? 0,
+          sprintCm: custom["minecraft:sprint_one_cm"] ?? 0,
+          flyCm: custom["minecraft:fly_one_cm"] ?? 0,
+          blocksMined: Object.values(mined).reduce((a, b) => a + b, 0),
+          itemsCrafted: Object.values(crafted).reduce((a, b) => a + b, 0),
+          topMinedBlocks: Object.entries(mined).sort((a, b) => b[1] - a[1]).slice(0, 5),
+          killedBy: Object.entries(killedBy).sort((a, b) => b[1] - a[1]).slice(0, 5),
+          topKilled: Object.entries(killed).sort((a, b) => b[1] - a[1]).slice(0, 5),
+        };
+      } catch {}
+    }
+
+    // ── Advancements ─────────────────────────────────────────────────────
+    let advancements: { completed: number } | null = null;
+    if (root && uuid) {
+      try {
+        const raw = JSON.parse(readFileSync(path.join(root, "world", "advancements", `${uuid}.json`), "utf8")) as Record<string, { done?: boolean }>;
+        const completed = Object.values(raw).filter((v) => v?.done === true).length;
+        advancements = { completed };
+      } catch {}
+    }
+
+    // ── Log-based activity ───────────────────────────────────────────────
+    let lastSeen: string | null = null;
+    let lastLoginPos: [number, number, number] | null = null;
+    let recentActivity: string[] = [];
+    if (root) {
+      try {
+        const logPath = path.join(root, "logs", "latest.log");
+        const lines = existsSync(logPath) ? readFileSync(logPath, "utf8").split("\n") : [];
+        const nameSafe = params.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const matchingLines: string[] = [];
+
+        for (const line of lines) {
+          if (!line.includes(params.name)) continue;
+          matchingLines.push(line);
+          // Last login position
+          const posM = line.match(new RegExp(`${nameSafe}\\[.+?\\] logged in with entity id \\d+ at \\(\\[.+?\\](-?[\\d.]+), (-?[\\d.]+), (-?[\\d.]+)\\)`));
+          if (posM) lastLoginPos = [parseFloat(posM[1]!), parseFloat(posM[2]!), parseFloat(posM[3]!)];
+          // Last seen
+          if (/joined the game|left the game/.test(line)) lastSeen = line;
+        }
+        // Keep last 10 lines mentioning this player (commands, chat, join, leave)
+        recentActivity = matchingLines.filter((l) =>
+          /joined the game|left the game|issued server command|<.+?>/.test(l)
+        ).slice(-10).map((l) => l.replace(/\u001b\[[0-9;]*m/g, "").trim());
+      } catch {}
+    }
+
+    // ── Live data via RCON ───────────────────────────────────────────────
+    let liveData: Record<string, unknown> | null = null;
+    try {
+      const online = await getServerStatus(params.id);
+      if ((online.players as string[]).includes(params.name)) {
+        const snbt = await sendCommand(params.id, `data get entity ${params.name}`);
+        const health = snbt.match(/Health: (-?[\d.]+)f/)?.[1];
+        const maxHealth = snbt.match(/(?:MaxHealth|generic\.max_health.*Amount): (-?[\d.]+)/)?.[1];
+        const food = snbt.match(/FoodLevel: (\d+)/)?.[1];
+        const sat = snbt.match(/FoodSaturationLevel: (-?[\d.]+)f/)?.[1];
+        const xpLevel = snbt.match(/XpLevel: (\d+)/)?.[1];
+        const xpP = snbt.match(/XpP: (-?[\d.]+)f/)?.[1];
+        const posM = snbt.match(/Pos: \[(-?[\d.]+)[df]?, (-?[\d.]+)[df]?, (-?[\d.]+)[df]?\]/);
+        const dim = snbt.match(/Dimension: "([^"]+)"/)?.[1] ?? null;
+        liveData = {
+          health: health ? parseFloat(health) : null,
+          maxHealth: maxHealth ? parseFloat(maxHealth) : 20,
+          food: food ? parseInt(food) : null,
+          saturation: sat ? parseFloat(sat) : null,
+          xpLevel: xpLevel ? parseInt(xpLevel) : null,
+          xpProgress: xpP ? parseFloat(xpP) : null,
+          pos: posM ? [parseFloat(posM[1]!), parseFloat(posM[2]!), parseFloat(posM[3]!)] : null,
+          dimension: dim,
+        };
+      }
+    } catch {}
+
+    return {
+      name: params.name,
+      uuid,
+      online: liveData !== null,
+      lastSeen,
+      lastLoginPos,
+      stats,
+      advancements,
+      liveData,
+      recentActivity,
+    };
   })
   .post("/:id/players/:name/kick", async ({ params, body, session, status, request }) => {
     if (!session?.user) return status(401, "Unauthorized");
