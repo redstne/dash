@@ -1,14 +1,48 @@
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, schema } from "./index.ts";
 import { seed, seedServers } from "./seed.ts";
 import { isNull } from "drizzle-orm";
 import path from "node:path";
+import { readFile } from "node:fs/promises";
 
-await migrate(db, {
-  migrationsFolder: path.resolve(import.meta.dir, "../../drizzle"),
-});
+const drizzleDir = path.resolve(import.meta.dir, "../../drizzle");
+const journal = JSON.parse(await readFile(path.join(drizzleDir, "meta/_journal.json"), "utf-8"));
 
-console.log("✅ Migrations applied");
+// Ensure tracking table exists (Drizzle-compatible schema)
+db.$client.run(`CREATE TABLE IF NOT EXISTS __drizzle_migrations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hash TEXT NOT NULL UNIQUE,
+  created_at INTEGER
+)`);
+
+const applied = new Set(
+  (db.$client.prepare("SELECT hash FROM __drizzle_migrations").all() as { hash: string }[]).map((r) => r.hash),
+);
+
+for (const entry of journal.entries) {
+  const tag: string = entry.tag;
+  if (applied.has(tag)) continue;
+
+  const sql = await readFile(path.join(drizzleDir, `${tag}.sql`), "utf-8");
+  const statements = sql.split("--> statement-breakpoint").map((s) => s.trim()).filter(Boolean);
+
+  for (const stmt of statements) {
+    try {
+      db.$client.run(stmt);
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message ?? "";
+      if (msg.includes("already exists") || msg.includes("duplicate column name")) {
+        console.warn(`[migrate] skip (${msg.split("\n")[0]})`);
+        continue;
+      }
+      throw e;
+    }
+  }
+
+  db.$client.prepare("INSERT OR IGNORE INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)").run(tag, Date.now());
+  console.log(`[migrate] ✅ ${tag}`);
+}
+
+console.log("✅ Migrations done");
 
 await seed();
 await seedServers();
