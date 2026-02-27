@@ -37,6 +37,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 data/
 
 # Feature documentation (local reference, not versioned)
-features/
+/features/
 # Windows ADS metadata
 *:Zone.Identifier
