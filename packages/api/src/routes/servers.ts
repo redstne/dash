@@ -432,12 +432,28 @@ export const serversRoute = new Elysia({ prefix: "/api/servers" })
       }
     } catch {}
 
+    // ── Ban / Op status ──────────────────────────────────────────────────
+    let banned = false;
+    let isOp = false;
+    if (root) {
+      try {
+        const bannedList = JSON.parse(readFileSync(path.join(root, "banned-players.json"), "utf8")) as { uuid?: string; name?: string }[];
+        banned = bannedList.some((e) => (uuid && e.uuid === uuid) || e.name?.toLowerCase() === params.name.toLowerCase());
+      } catch {}
+      try {
+        const opsList = JSON.parse(readFileSync(path.join(root, "ops.json"), "utf8")) as { uuid?: string; name?: string }[];
+        isOp = opsList.some((e) => (uuid && e.uuid === uuid) || e.name?.toLowerCase() === params.name.toLowerCase());
+      } catch {}
+    }
+
     return {
       name: params.name,
       uuid,
       online: liveData !== null,
       lastSeen,
       lastLoginPos,
+      banned,
+      isOp,
       stats,
       advancements,
       liveData,
@@ -483,6 +499,33 @@ export const serversRoute = new Elysia({ prefix: "/api/servers" })
     });
     return { response };
   }, { body: t.Optional(t.Object({ reason: t.Optional(t.String()) })) })
+  // Unban a player (admin only)
+  .post("/:id/players/:name/unban", async ({ params, session, status, request }) => {
+    if (!session?.user) return status(401, "Unauthorized");
+    if (session.user.role !== "admin") return status(403, "Forbidden");
+    if (!/^[a-zA-Z0-9_]{1,16}$/.test(params.name)) return status(400, "Invalid player name");
+    const response = await sendCommand(params.id, `pardon ${params.name}`);
+    await audit({ userId: session.user.id, action: "player.unban", resource: "server", resourceId: params.id, metadata: { player: params.name }, ip: request.headers.get("x-forwarded-for") ?? undefined });
+    return { response };
+  })
+  // Op a player (admin only)
+  .post("/:id/players/:name/op", async ({ params, session, status, request }) => {
+    if (!session?.user) return status(401, "Unauthorized");
+    if (session.user.role !== "admin") return status(403, "Forbidden");
+    if (!/^[a-zA-Z0-9_]{1,16}$/.test(params.name)) return status(400, "Invalid player name");
+    const response = await sendCommand(params.id, `op ${params.name}`);
+    await audit({ userId: session.user.id, action: "player.op", resource: "server", resourceId: params.id, metadata: { player: params.name }, ip: request.headers.get("x-forwarded-for") ?? undefined });
+    return { response };
+  })
+  // Deop a player (admin only)
+  .post("/:id/players/:name/deop", async ({ params, session, status, request }) => {
+    if (!session?.user) return status(401, "Unauthorized");
+    if (session.user.role !== "admin") return status(403, "Forbidden");
+    if (!/^[a-zA-Z0-9_]{1,16}$/.test(params.name)) return status(400, "Invalid player name");
+    const response = await sendCommand(params.id, `deop ${params.name}`);
+    await audit({ userId: session.user.id, action: "player.deop", resource: "server", resourceId: params.id, metadata: { player: params.name }, ip: request.headers.get("x-forwarded-for") ?? undefined });
+    return { response };
+  })
   // Create a server (admin only)
   .use(requireRole("admin"))
   .post(
